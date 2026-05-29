@@ -110,10 +110,10 @@
 | 论文部分 | 社会学研究范式 | 管理世界案例范式 |
 |---------|--------------|----------------|
 | 引言/问题提出 | [intro_example.md](../examples/intro_example.md) 社会学部分 | [intro_example.md](../examples/intro_example.md) 管理世界部分 |
-| 文献综述 | [lit_review_example.md](../examples/lit_review_example.md) | 管理世界 skill 的 writing_templates.md |
-| 分析框架 | [framework_example.md](../examples/framework_example.md) | 管理世界 skill 的 paper_patterns.md |
+| 文献综述 | [lit_review_example.md](../examples/lit_review_example.md) | [lit_review_example.md](../examples/lit_review_example.md) 第100行起范式对比表 |
+| 分析框架 | [framework_example.md](../examples/framework_example.md) | [framework_example.md](../examples/framework_example.md) 管理世界部分 |
 | 研究发现 | [findings_example.md](../examples/findings_example.md) 社会学部分 | [findings_example.md](../examples/findings_example.md) 管理世界部分 |
-| 结论与讨论 | [conclusion_example.md](../examples/conclusion_example.md) | 管理世界 skill 的 writing_templates.md |
+| 结论与讨论 | [conclusion_example.md](../examples/conclusion_example.md) | [conclusion_example.md](../examples/conclusion_example.md) 管理世界部分 |
 
 ---
 

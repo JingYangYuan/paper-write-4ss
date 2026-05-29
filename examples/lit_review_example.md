@@ -1,6 +1,6 @@
 # 文献综述范文与提示词
 
-本文档提供社会学研究范式的文献综述结构模板和可复用的写作提示词。管理世界案例范式的文献综述写作指南参见 management-world-case-writing-skill。
+本文档提供社会学研究范式的文献综述结构模板和可复用的写作提示词。管理世界案例范式的文献综述差异要点参见 [resources/paradigm_selector.md](../resources/paradigm_selector.md) 中的范式对比表。
 
 ---
 
