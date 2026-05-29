@@ -110,7 +110,7 @@
 | 论文部分 | 社会学研究范式 | 管理世界案例范式 |
 |---------|--------------|----------------|
 | 引言/问题提出 | [intro_example.md](../examples/intro_example.md) 社会学部分 | [intro_example.md](../examples/intro_example.md) 管理世界部分 |
-| 文献综述 | [lit_review_example.md](../examples/lit_review_example.md) 通用模板 | [lit_review_example.md](../examples/lit_review_example.md) 范式对比表 |
+| 文献综述 | [lit_review_example.md](../examples/lit_review_example.md) | 同左，通用模板 |
 | 分析框架 | [framework_example.md](../examples/framework_example.md) | [framework_example.md](../examples/framework_example.md) 管理世界部分 |
 | 研究发现 | [findings_example.md](../examples/findings_example.md) 社会学部分 | [findings_example.md](../examples/findings_example.md) 管理世界部分 |
 | 结论与讨论 | [conclusion_example.md](../examples/conclusion_example.md) | [conclusion_example.md](../examples/conclusion_example.md) 管理世界部分 |
