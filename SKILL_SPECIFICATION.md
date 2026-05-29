@@ -1,250 +1,250 @@
-# paper-write-4ss Skill Specification
+# paper-write-4ss 技能规范
 
-## Skill Overview
+## 技能概览
 
-**Name:** paper-write-4ss (中文学术写作系统)
+**名称：** paper-write-4ss（中文学术写作系统）
 
-**Purpose:** A comprehensive Chinese academic writing system designed to assist social science researchers in writing high-quality papers for peer-reviewed journals. The system is grounded in empirical analysis of published papers from authoritative journals like 《社会学研究》(Sociological Research), 《管理世界》(Management World), and 《中国社会科学》(Chinese Social Sciences Quarterly).
+**目的：** 一套综合性的中文学术写作系统，旨在帮助社会科学研究者撰写可用于同行评审期刊的高质量论文。该系统以对《社会学研究》《管理世界》《中国社会科学》等权威期刊已发表论文的实证分析为基础。
 
-**Target Audience:** Chinese social science researchers, particularly those publishing in sociology, management, public administration, and related fields.
-
----
-
-## Core Capabilities
-
-### 1. **Paradigm Selection & Routing**
-The skill begins by diagnosing the user's research type through three diagnostic questions:
-- **Target journal style** (sociology vs. management journals)
-- **Research methodology** (quantitative, qualitative, case study, theoretical)
-- **Expected word count** (< 1.5K, 1.5-2.5K, > 2.5K)
-
-Based on responses, the skill routes users to one of two established paradigms:
-- **Sociology Research Paradigm** (定量/理论/质性路径)
-- **Management World Case Study Paradigm** (案例研究范式)
-
-### 2. **Seven-Element Paper Structure**
-Guides users through 7 mandatory components:
-1. **Title + Abstract + Keywords** (G1-G4, A1-A5): Distill paper essence for indexing
-2. **Introduction** (I1-I7): Establish research legitimacy
-3. **Literature Review** (L1-L6): Position within knowledge context
-4. **Methods & Materials** (M1-M5): Narrate research process
-5. **Empirical Analysis** (E1-E5): Present findings through logical organization
-6. **Theoretical Dialogue** (T1-T5): Contribute to knowledge base
-7. **Conclusion & Discussion** (C1-C6): Synthesize and extend
-
-### 3. **Writing Standards & Hard Constraints**
-- **Hard Constraints** (write_constraints):
-  - Prohibit embedding complete paper titles in body text (use author-year citations)
-  - Prohibit non-academic colloquialisms ("一文中", "该文")
-  - Prohibit "negation + assertion" sentence structure ("不是...而是...")
-  - Prohibit em-dashes (——) in body text
-  - Prohibit mechanical punctuation replacement scripts
-  - Require justified quotation marks
-  - Mandate Chinese quotation marks ("") throughout
-
-- **Structural Standards**:
-  - Ideal proportions: Empirical analysis 30-40%; other elements balanced
-  - Introduction: 10-15% of total
-  - Literature review: 15-20%
-  - Methods: 8-12%
-  - Theory dialogue: 10-15%
-  - Conclusion: 10-15%
-
-### 4. **Four-Stage Quality Control Checklist**
-Users follow a structured validation workflow:
-1. **Structural Completeness** - 7 elements present, proportion audits
-2. **Argumentation Rigor** - Logical progression, transitions, evidence density
-3. **Materials & Citations** - Citation diversity (≥3 forms), analytical depth per citation
-4. **Language Normalization** - Academic register, terminology consistency, formatting
-
-### 5. **Writing Scanner Tool**
-Automated Python script (`writing_scanner.py`) detects and flags:
-- Prohibited patterns (19 rules across 4 categories)
-- Provides actionable rewriting instructions
-- Supports iterative refinement cycle: scan → instruct → rewrite → re-scan
+**目标受众：** 中文社会科学研究者，尤其是社会学、管理学、公共管理及相关领域的论文发表者。
 
 ---
 
-## Knowledge Structure
+## 核心能力
 
-### Chapter-Based Standards (`/chapters`)
-- **ch01-form-logic.md** - Logical form selection for papers
-- **ch02-topic-material.md** - Topic design, title generation, abstract/keywords
-- **ch03-genesis-question.md** - Problem formulation and introduction structure
-- **ch04-lit-review.md** - Literature review framework and architecture
-- **ch05-lit-technique.md** - Citation techniques and integration strategies
-- **ch06-material-method.md** - Methods section writing standards
-- **ch07-organizing-materials.md** - Empirical material organization principles
-- **ch08-theory-dialogue.md** - Theoretical contribution and positioning
-- **ch09-conclusion.md** - Conclusion and discussion conventions
-- **ch10-submission-ethics.md** - Reference formatting and submission ethics
+### 1. **范式选择与路由**
+本技能通过三个诊断性问题判断用户的研究类型：
+- **目标期刊风格**（社会学类期刊 vs. 管理学期刊）
+- **研究方法**（定量、定性、案例研究、理论研究）
+- **预期字数**（< 1500字、1500-2500字、> 2500字）
 
-### Exemplars & Prompt Templates (`/examples`)
-- **intro_example.md** - 3 introduction models (sociology quantitative/qualitative + management case study)
-- **lit_review_example.md** - Framework-based and hypothesis-driven literature review models
-- **framework_example.md** - 4 analytical framework types (dimensional, dialogical, mechanistic, matrix)
-- **findings_example.md** - 3 findings presentation models with annotation
-- **conclusion_example.md** - 2 conclusion models per paradigm with anti-patterns
+根据回答，技能将用户引导至两种既定范式之一：
+- **社会学研究范式**（定量/理论/质性路径）
+- **管理世界案例研究范式**（案例研究范式）
 
-### Resource Materials (`/resources`)
-- **paradigm_selector.md** - Detailed paradigm comparison, decision trees, conversion guides
-- **cheatsheet.md** - Quick reference tables (paper elements, decision matrices, checklists)
-- **glossary.md** - Key terminology with definitions
-- **patterns.md** - Writing techniques, trigger conditions, anti-patterns (15.2 KB of applied craft knowledge)
+### 2. **七要素论文结构**
+引导用户完成7个必写部分：
+1. **标题+摘要+关键词**（G1-G4, A1-A5）：提炼论文核心，便于索引
+2. **引言**（I1-I7）：确立研究的合法性
+3. **文献综述**（L1-L6）：将研究置于知识脉络中
+4. **研究方法与材料**（M1-M5）：叙述研究过程
+5. **实证分析**（E1-E5）：通过逻辑组织呈现研究发现
+6. **理论对话**（T1-T5）：贡献知识增量
+7. **结论与讨论**（C1-C6）：综合与延伸
+
+### 3. **写作规范与硬性约束**
+- **硬性约束**（write_constraints）：
+  - 禁止在正文中嵌入完整的论文标题（应使用“作者-年份”引注）
+  - 禁止使用非学术口语表达（如“一文中”“该文”）
+  - 禁止使用“否定+断言”句式（如“不是……而是……”）
+  - 禁止在正文中使用破折号“——”
+  - 禁止使用机械性标点替换脚本
+  - 要求引号必须成对出现
+  - 强制全文使用中文引号（“”）
+
+- **结构标准**：
+  - 理想比例：实证分析占30-40%；其他要素均衡分布
+  - 引言：占总篇幅10-15%
+  - 文献综述：15-20%
+  - 研究方法：8-12%
+  - 理论对话：10-15%
+  - 结论：10-15%
+
+### 4. **四阶段质量控制清单**
+用户遵循结构化验证流程：
+1. **结构完整性**——7要素齐全，比例审查
+2. **论证严谨性**——逻辑推进、过渡衔接、证据密度
+3. **材料与引文**——引文多样性（≥3种形式）、每条引文的分析深度
+4. **语言规范化**——学术语体、术语一致性、格式规范
+
+### 5. **写作扫描工具**
+自动化Python脚本（`writing_scanner.py`）检测并标记：
+- 禁用模式（共4类19条规则）
+- 提供可操作的改写说明
+- 支持迭代优化循环：扫描 → 指导 → 改写 → 重新扫描
 
 ---
 
-## Interaction Protocol
+## 知识结构
 
-### Usage Flow
+### 分章规范（`/chapters`）
+- **ch01-form-logic.md** —— 论文逻辑形式选择
+- **ch02-topic-material.md** —— 选题设计、标题生成、摘要与关键词
+- **ch03-genesis-question.md** —— 问题提出与引言结构
+- **ch04-lit-review.md** —— 文献综述框架与架构
+- **ch05-lit-technique.md** —— 引文技巧与整合策略
+- **ch06-material-method.md** —— 方法部分写作规范
+- **ch07-organizing-materials.md** —— 实证材料组织原则
+- **ch08-theory-dialogue.md** —— 理论贡献与定位
+- **ch09-conclusion.md** —— 结论与讨论的写作惯例
+- **ch10-submission-ethics.md** —— 参考文献格式与投稿伦理
 
-1. **Initial Orientation**
-   - User provides writing task
-   - Skill uses `AskUserQuestion` to diagnose paradigm (3 questions)
-   - Skill confirms selected paradigm and explains section-specific requirements
+### 范例与提示模板（`/examples`）
+- **intro_example.md** —— 3种引言模型（社会学定量/质性 + 管理学案例研究）
+- **lit_review_example.md** —— 基于框架和假设驱动的文献综述模型
+- **framework_example.md** —— 4种分析框架类型（维度型、对话型、机制型、矩阵型）
+- **findings_example.md** —— 3种研究发现呈现模型（附批注）
+- **conclusion_example.md** —— 每种范式2种结论模型，含反模式示例
 
-2. **Section-Specific Writing**
-   - User requests work on specific section
-   - Skill reads applicable `chapter/ch_X.md` file
-   - Skill reads corresponding `examples/X_example.md` file
-   - Skill applies standards from chapters + templates from examples
-   - Outputs writing guidance or revised text
+### 资源材料（`/resources`）
+- **paradigm_selector.md** —— 详细范式比较、决策树、转换指南
+- **cheatsheet.md** —— 快速参考表（论文要素、决策矩阵、清单）
+- **glossary.md** —— 关键术语定义
+- **patterns.md** —— 写作技巧、触发条件、反模式（15.2KB 应用型写作知识）
 
-3. **Revision Workflow**
-   - User submits draft text
-   - Skill invokes `writing_scanner.py --instructions` to generate repair instructions
-   - AI reads instructions and performs natural sentence rewriting
-   - Skill runs `writing_scanner.py --scan` to verify
-   - Cycle repeats until critical issues (`🔴高危`) = 0
+---
 
-4. **Quality Assurance**
-   - Before submission, user runs full 4-stage checklist
-   - Skill cross-references each item against hardcoded standards
-   - Provides itemized remediation plan
+## 交互协议
 
-### Tools & Methods
-- **Read:** Access chapter standards, exemplars, resources
-- **Write:** Generate outlines, revise sections, produce full drafts
-- **Edit:** Iterative refinement using structured feedback
-- **Bash:** Execute `writing_scanner.py` for automated analysis
-- **Grep:** Search across chapters and examples for pattern references
+### 使用流程
 
-### Argument Hint
+1. **初始定位**
+   - 用户提供写作任务
+   - 技能使用`AskUserQuestion`诊断范式（3个问题）
+   - 技能确认所选范式并说明各部分的具体要求
+
+2. **分节写作**
+   - 用户请求撰写特定章节
+   - 技能读取对应的`chapter/ch_X.md`文件
+   - 技能读取对应的`examples/X_example.md`文件
+   - 技能应用章节规范 + 范例模板
+   - 输出写作指导或修改后的文本
+
+3. **修改流程**
+   - 用户提交草稿文本
+   - 技能调用`writing_scanner.py --instructions`生成修复说明
+   - AI阅读说明并进行自然的句子改写
+   - 技能运行`writing_scanner.py --scan`进行验证
+   - 循环直至严重问题（`🔴高危`）数量归零
+
+4. **质量保障**
+   - 投稿前，用户执行完整的四阶段检查清单
+   - 技能逐项对照硬性标准
+   - 提供逐项修正计划
+
+### 工具与方法
+- **Read（读取）**：访问分章规范、范例、资源
+- **Write（写作）**：生成大纲、修改段落、产出完整草稿
+- **Edit（编辑）**：使用结构化反馈进行迭代优化
+- **Bash（执行）**：运行`writing_scanner.py`进行自动分析
+- **Grep（搜索）**：在各章和范例中检索模式引用
+
+### 指令提示
 ```
 [文本路径] 后加 [润色/扫描/检查/改写]
 [Text path] followed by [polish/scan/check/rewrite]
 ```
 
-Accepted commands:
-- `润色` (Polish) - Copy-edit for language normalization
-- `扫描` (Scan) - Run automated writing scanner
-- `检查` (Check) - Run 4-stage quality checklist
-- `改写` (Rewrite) - Structural or content regeneration
+接受的指令：
+- `润色` —— 语言规范化润色
+- `扫描` —— 运行自动写作扫描工具
+- `检查` —— 执行四阶段质量检查清单
+- `改写` —— 结构性或内容性重构
 
 ---
 
-## Key Features & Differentiators
+## 主要特点与差异化优势
 
-### 1. Evidence-Based Standards
-All 19 hard standards are derived from published papers in tier-1 Chinese journals, not prescriptive theory. This ensures advice is publication-tested.
+### 1. 基于证据的规范
+全部19条硬性规范源自国内一流期刊已发表论文，而非预设性理论，确保建议经过发表实践的检验。
 
-### 2. Paradigm Flexibility
-Recognizes that sociology and management publishing have distinct conventions (structure, evidence presentation, theory dialogue style). System auto-routes without requiring user expertise in field-specific norms.
+### 2. 范式灵活性
+认识到社会学与管理学期刊在结构、证据呈现、理论对话风格上存在明显差异。系统自动路由，用户无需掌握特定领域的发表规范。
 
-### 3. Granular Citation Guidance
-Beyond "use citations," the system specifies:
-- Citation density per section (引文前后密度均衡)
-- Analytical depth requirements (引文后有思考痕迹)
-- Form diversity (引文呈现形式多样化 ≥ 3 种)
+### 3. 精细化的引文指导
+超越“使用引文”的笼统建议，系统明确：
+- 各部分的引文密度（引文前后密度均衡）
+- 分析深度要求（引文后有思考痕迹）
+- 形式多样性（引文呈现形式多样化，≥3种）
 
-### 4. Mechanical Pattern Detection
-The `writing_scanner.py` tool flags prohibited patterns algorithmically, reducing manual review burden and enabling iterative refinement loops.
+### 4. 机械模式检测
+`writing_scanner.py`工具可算法化地标记禁用模式，减少人工审查负担，支持迭代优化循环。
 
-### 5. Annotation-Based Learning
-All exemplars are annotated with bracketed standard codes (e.g., [I1], [E3]), enabling cross-referencing between example text, standard documentation, and user outputs.
-
----
-
-## Forbidden Patterns & Constraints
-
-### Prohibited Constructions
-| Pattern | Reason | Example |
-|---------|--------|---------|
-| "不是...而是..." | Negation-assertion structure; use direct statement | ❌ 并非能力不足，而是基础设施缺失 → ✅ 根源在于基础设施缺失 |
-| Em-dashes (——) | Suggests prose narrative, incompatible with formal register | ❌ 劳动可见性——关键因素 → ✅ 劳动可见性的关键决定因素是组织定义 |
-| Paper title in body | Standard citation format requires author-year; allows reader lookup in references | ❌ 《劳动市场如何分割》一文说... → ✅ 张三（2020）分析了劳动市场分割... |
-| Colloquial meta-language | Signals non-academic register | ❌ 一文中提出... / 该文指出... → ✅ 该研究发现... / 直接陈述内容 |
-
-### Script Replacement Prohibition
-The skill explicitly forbids mechanical punctuation replacement. All edits must involve natural sentence rewriting by AI, not regex substitution.
+### 5. 基于批注的学习方式
+所有范例都带有方括号标注的规范代码（例如[I1]、[E3]），便于在范例文本、规范文档和用户输出之间交叉引用。
 
 ---
 
-## Quality Assurance Workflow
+## 禁用模式与约束
 
-### Writing Cycle: Scan → Instruct → Rewrite → Re-Scan
+### 禁用结构
+| 模式 | 原因 | 示例 |
+|------|------|------|
+| “不是……而是……” | 否定-断言结构；应使用直接陈述 | ❌ 并非能力不足，而是基础设施缺失 → ✅ 根源在于基础设施缺失 |
+| 破折号（——） | 带有散文叙事色彩，不符合正式语体 | ❌ 劳动可见性——关键因素 → ✅ 劳动可见性的关键决定因素是组织定义 |
+| 正文中出现论文标题 | 标准引注格式要求“作者-年份”，便于读者在参考文献中查找 | ❌ 《劳动市场如何分割》一文说…… → ✅ 张三（2020）分析了劳动市场分割…… |
+| 口语化的元语言表达 | 表明非学术语体 | ❌ 一文中提出…… / 该文指出…… → ✅ 该研究发现…… / 直接陈述内容 |
 
-1. **Scan Phase**
+### 禁止使用脚本替换
+本技能明确禁止机械性地替换标点符号。所有编辑必须由AI进行自然的句子改写，不得使用正则替换。
+
+---
+
+## 质量保障流程
+
+### 写作循环：扫描 → 指导 → 改写 → 重新扫描
+
+1. **扫描阶段**
    ```bash
    python writing_scanner.py --instructions < draft.md > repair_instructions.md
    ```
-   Generates diagnostic output for human/AI review
+   生成供人工/AI审阅的诊断输出
 
-2. **Instruct Phase**
-   AI reads repair instructions and identifies patterns to rewrite
+2. **指导阶段**
+   AI阅读修复说明，识别需要改写的模式
 
-3. **Rewrite Phase**
-   AI performs natural sentence rewriting (not mechanical substitution)
+3. **改写阶段**
+   AI进行自然的句子改写（非机械替换）
 
-4. **Re-scan Phase**
+4. **重新扫描阶段**
    ```bash
    python writing_scanner.py --scan < revised.md
    ```
-   Verifies compliance; cycles until `🔴高危` count = 0
+   验证合规性；循环直至`🔴高危`计数 = 0
 
 ---
 
-## Integration Points
+## 集成点
 
-### With External Tools
-- Academic citation managers (Zotero, Mendeley) for reference formatting
-- Word/Google Docs for collaborative drafting (exported to .md for scanning)
-- ArXiv/journal submission systems for final formatting
+### 与外部工具集成
+- 学术文献管理工具（Zotero、Mendeley）用于参考文献格式化
+- Word/Google Docs用于协同写作（导出为.md后扫描）
+- ArXiv/期刊投稿系统用于最终格式调整
 
-### With Other Skills
-- **Grammar skill**: Handles syntax issues not covered by pattern detection
-- **Citation formatting skill**: Specific journal citation styles (GBK/APA/Chicago)
-- **Plagiarism detection skill**: Upstream integrity checks
-
----
-
-## Limitations & Scope Boundaries
-
-### In Scope
-- ✅ Chinese academic paper writing guidance (social sciences primary)
-- ✅ Structural and substantive advice (argumentation, framework logic)
-- ✅ Language register normalization and pattern correction
-- ✅ Cross-paradigm routing and section-specific coaching
-
-### Out of Scope
-- ❌ Non-academic writing (journalism, creative writing, technical documentation)
-- ❌ Non-Chinese publications (English, European journals have different conventions)
-- ❌ Disciplinary fields outside social sciences (STEM, medicine, law)
-- ❌ Research ethics review or plagiarism detection (upstream tasks)
-- ❌ Statistical analysis or data visualization guidance (downstream task)
+### 与其他技能集成
+- **语法技能**：处理模式检测未覆盖的句法问题
+- **引文格式化技能**：特定期刊引文风格（GBK/APA/芝加哥）
+- **查重检测技能**：上游完整性检查
 
 ---
 
-## Repository Structure Summary
+## 限制与范围边界
+
+### 范围内
+- ✅ 中文学术论文写作指导（以社会科学为主）
+- ✅ 结构性和实质性建议（论证、框架逻辑）
+- ✅ 语言语体规范化和模式纠错
+- ✅ 跨范式路由和分节指导
+
+### 范围外
+- ❌ 非学术写作（新闻、创意写作、技术文档）
+- ❌ 非中文出版物（英文、欧洲期刊有不同的规范）
+- ❌ 社会科学之外的学科领域（理工、医学、法学）
+- ❌ 研究伦理审查或查重（属于上游任务）
+- ❌ 统计分析或数据可视化指导（属于下游任务）
+
+---
+
+## 仓库结构概要
 
 ```
 paper-write-4ss/
-├── README.md                          # User-facing overview
-├── SKILL.md                           # Full skill specification (236 lines)
-├── SKILL_SPECIFICATION.md             # This document
+├── README.md                          # 面向用户的概览
+├── SKILL.md                           # 完整技能规范（236行）
+├── SKILL_SPECIFICATION.md             # 本文档
 ├── paper-write-4ss/
-│   ├── SKILL.md                       # Master reference document
-│   ├── chapters/                      # 10 chapter-based standard documents
+│   ├── SKILL.md                       # 主参考文档
+│   ├── chapters/                      # 10个分章规范文档
 │   │   ├── ch01-form-logic.md
 │   │   ├── ch02-topic-material.md
 │   │   ├── ch03-genesis-question.md
@@ -255,57 +255,57 @@ paper-write-4ss/
 │   │   ├── ch08-theory-dialogue.md
 │   │   ├── ch09-conclusion.md
 │   │   └── ch10-submission-ethics.md
-│   ├── examples/                      # 5 exemplar documents with templates
+│   ├── examples/                      # 5个范例文档及模板
 │   │   ├── intro_example.md
 │   │   ├── lit_review_example.md
 │   │   ├── framework_example.md
 │   │   ├── findings_example.md
 │   │   └── conclusion_example.md
-│   ├── resources/                     # Supporting reference materials
-│   │   ├── paradigm_selector.md       # Paradigm decision tree
-│   │   ├── cheatsheet.md              # Quick reference tables
-│   │   ├── glossary.md                # Terminology definitions
-│   │   └── patterns.md                # Writing techniques & anti-patterns
-│   └── scripts/                       # Automation tools
-│       └── writing_scanner.py         # Pattern detection & repair script
+│   ├── resources/                     # 辅助参考材料
+│   │   ├── paradigm_selector.md       # 范式决策树
+│   │   ├── cheatsheet.md              # 快速参考表
+│   │   ├── glossary.md                # 术语定义
+│   │   └── patterns.md                # 写作技巧与反模式
+│   └── scripts/                       # 自动化工具
+│       └── writing_scanner.py         # 模式检测与修复脚本
 ```
 
 ---
 
-## Version & Maintenance
+## 版本与维护
 
-**Skill Version:** 1.0 (Initial Release)
+**技能版本：** 1.0（初始发布）
 
-**Last Updated:** 2026-05-29
+**最后更新：** 2026-05-29
 
-**Maintenance Notes:**
-- All standards traceable to published papers in tier-1 journals
-- Update cycle: Quarterly review of new publications in reference journals
-- Anti-pattern library: Living document; new prohibited patterns added as edge cases discovered in user feedback
-
----
-
-## Getting Started for Users
-
-### For First-Time Users
-1. Load the skill and answer 3 diagnostic questions about your research paradigm
-2. Navigate to `examples/` → read the exemplar for your paper section
-3. Copy the corresponding prompt template and adapt for your paper
-4. Generate or revise text using the prompt
-5. When draft complete, run: `python scripts/writing_scanner.py --scan <your_file>`
-
-### For Frequent Users
-1. Bookmark `resources/cheatsheet.md` for fast lookups
-2. Use `chapters/chX-X.md` as reference during writing
-3. Integrate `writing_scanner.py` into your editor workflow
-4. Follow the scan → instruct → rewrite → re-scan cycle
+**维护说明：**
+- 所有规范均可追溯至一流期刊已发表论文
+- 更新周期：参照期刊每季度新发表论文的审阅
+- 反模式库：持续更新的文档；根据用户反馈中发现的新边缘案例不断添加禁用模式
 
 ---
 
-## Support & Contributing
+## 用户快速入门
 
-**Documentation Issues:** File issues on the repository if a standard is unclear or an exemplar needs clarification.
+### 首次使用
+1. 加载技能，回答关于研究范式的3个诊断性问题
+2. 进入`examples/`目录，阅读您要撰写论文部分的范例
+3. 复制相应的提示模板，并根据自己的论文进行调整
+4. 使用提示生成或修改文本
+5. 草稿完成后运行：`python scripts/writing_scanner.py --scan <您的文件>`
 
-**New Paradigms:** If your research domain isn't covered (e.g., law review writing), create a new paradigm document following the structure of `paradigm_selector.md`.
+### 常用用户
+1. 将`resources/cheatsheet.md`加入书签以便快速查阅
+2. 写作时将`chapters/chX-X.md`作为参考
+3. 将`writing_scanner.py`集成到编辑器工作流中
+4. 遵循“扫描 → 指导 → 改写 → 重新扫描”循环
 
-**Pattern Contributions:** Submit edge cases of poor writing patterns for potential addition to `writing_scanner.py` and `patterns.md`.
+---
+
+## 支持与贡献
+
+**文档问题：** 如果某条规范表述不清，或某个范例需要进一步说明，请在仓库中提交问题。
+
+**新范式：** 如果您的研究领域未被覆盖（如法学评论写作），请参照`paradigm_selector.md`的结构创建新的范式文档。
+
+**模式贡献：** 如发现写作中的不良模式边缘案例，欢迎提交以便考虑添加到`writing_scanner.py`和`patterns.md`中。
