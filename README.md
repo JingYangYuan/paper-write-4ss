@@ -117,3 +117,7 @@ resources/paradigm_selector.md
 ## 一句话总结
 
 `paper-write-4ss` 的定位是一套面向中文社会科学论文的写作路由、章节标准、范文提示词和语言扫描流程。用它时，先定范式，再按章节写，最后用扫描器把明显不规范的表达清掉。
+
+## 联系方式
+
+- 作者邮箱：[jingyangyuan101@gmail.com](mailto:jingyangyuan101@gmail.com)
