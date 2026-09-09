@@ -1,0 +1,113 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1280" height="420" viewBox="0 0 1280 420" role="img" aria-label="paper-write-4ss">
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#16070c"/>
+      <stop offset="48%" stop-color="#1c0b14"/>
+      <stop offset="100%" stop-color="#180e1c"/>
+    </linearGradient>
+    <linearGradient id="title-grad" x1="0" y1="0" x2="1" y2="0">
+      <stop offset="0%" stop-color="#fb7185"/>
+      <stop offset="50%" stop-color="#f43f5e"/>
+      <stop offset="100%" stop-color="#c084fc"/>
+    </linearGradient>
+    <linearGradient id="card-border" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#fb7185" stop-opacity=".4"/>
+      <stop offset="50%" stop-color="#f43f5e" stop-opacity=".25"/>
+      <stop offset="100%" stop-color="#c084fc" stop-opacity=".4"/>
+    </linearGradient>
+    <linearGradient id="progress-bar" x1="0" y1="0" x2="1" y2="0">
+      <stop offset="0%" stop-color="#fb7185"/>
+      <stop offset="50%" stop-color="#f43f5e"/>
+      <stop offset="100%" stop-color="#c084fc"/>
+    </linearGradient>
+    <radialGradient id="orb-right" cx="82%" cy="38%" r="48%">
+      <stop offset="0%" stop-color="#f43f5e" stop-opacity=".20"/>
+      <stop offset="55%" stop-color="#c084fc" stop-opacity=".10"/>
+      <stop offset="100%" stop-color="#16070c" stop-opacity="0"/>
+    </radialGradient>
+    <radialGradient id="orb-left" cx="18%" cy="88%" r="40%">
+      <stop offset="0%" stop-color="#c084fc" stop-opacity=".16"/>
+      <stop offset="60%" stop-color="#f43f5e" stop-opacity=".06"/>
+      <stop offset="100%" stop-color="#16070c" stop-opacity="0"/>
+    </radialGradient>
+    <filter id="soft" x="-20%" y="-20%" width="140%" height="140%">
+      <feGaussianBlur stdDeviation="32"/>
+    </filter>
+  </defs>
+
+  <rect width="1280" height="420" rx="32" fill="url(#bg)"/>
+  <rect width="1280" height="420" rx="32" fill="url(#orb-right)"/>
+  <rect width="1280" height="420" rx="32" fill="url(#orb-left)"/>
+  <circle cx="1080" cy="70" r="140" fill="#f43f5e" opacity=".12" filter="url(#soft)"/>
+  <circle cx="150" cy="380" r="110" fill="#c084fc" opacity=".14" filter="url(#soft)"/>
+
+  <g stroke="#94a3b8" stroke-opacity=".06" stroke-width="1">
+    <path d="M80 0v420M160 0v420M240 0v420M320 0v420M400 0v420M480 0v420M560 0v420M640 0v420M720 0v420M800 0v420M880 0v420M960 0v420M1040 0v420M1120 0v420M1200 0v420"/>
+    <path d="M0 70h1280M0 140h1280M0 210h1280M0 280h1280M0 350h1280"/>
+  </g>
+
+  <text x="88" y="88" fill="#fda4af" font-family="ui-sans-serif, system-ui, -apple-system, Segoe UI, sans-serif" font-size="15" font-weight="700" letter-spacing="4">PAPER MASTER 4SS · WRITE</text>
+  <text x="88" y="166" fill="#f8fafc" font-family="ui-sans-serif, system-ui, -apple-system, Segoe UI, sans-serif" font-size="58" font-weight="800">paper<tspan fill="url(#title-grad)">-write-4ss</tspan></text>
+  <text x="88" y="216" fill="#cbd5e1" font-family="ui-sans-serif, system-ui, PingFang SC, Microsoft YaHei, sans-serif" font-size="21">章节写作 · 润色 · 语言扫描 · 正文净稿</text>
+
+  <g font-family="ui-sans-serif, system-ui, PingFang SC, Microsoft YaHei, sans-serif" font-size="14" font-weight="600">
+    <rect x="88" y="248" width="92" height="36" rx="18" fill="#1c0a10" stroke="#fb7185" stroke-opacity=".6"/>
+    <circle cx="106" cy="266" r="4" fill="#fb7185"/>
+    <text x="118" y="271" fill="#fecdd3">规范</text>
+    <rect x="192" y="248" width="92" height="36" rx="18" fill="#180e1c" stroke="#c084fc" stroke-opacity=".6"/>
+    <circle cx="210" cy="266" r="4" fill="#c084fc"/>
+    <text x="222" y="271" fill="#e9d5ff">实证</text>
+    <rect x="296" y="248" width="92" height="36" rx="18" fill="#0c1e33" stroke="#38bdf8" stroke-opacity=".6"/>
+    <circle cx="314" cy="266" r="4" fill="#38bdf8"/>
+    <text x="326" y="271" fill="#7dd3fc">阐释</text>
+    <rect x="400" y="248" width="92" height="36" rx="18" fill="#061c18" stroke="#34d399" stroke-opacity=".6"/>
+    <circle cx="418" cy="266" r="4" fill="#34d399"/>
+    <text x="430" y="271" fill="#6ee7b7">混合</text>
+  </g>
+
+  <g font-family="ui-sans-serif, system-ui, PingFang SC, Microsoft YaHei, sans-serif">
+    <text x="88" y="332" fill="#94a3b8" font-size="14" font-weight="500">路由 → 起草 → 润色 → 扫描</text>
+    <rect x="88" y="348" width="536" height="12" rx="6" fill="#0f172a" stroke="#1e293b"/>
+    <rect x="88" y="348" width="536" height="12" rx="6" fill="url(#progress-bar)"/>
+  </g>
+
+  <g transform="translate(720 50)">
+    <rect width="472" height="320" rx="20" fill="#0b1322" fill-opacity=".92" stroke="url(#card-border)" stroke-width="1.5"/>
+    <circle cx="28" cy="26" r="5.5" fill="#ef4444" opacity=".8"/>
+    <circle cx="46" cy="26" r="5.5" fill="#eab308" opacity=".8"/>
+    <circle cx="64" cy="26" r="5.5" fill="#22c55e" opacity=".8"/>
+    <text x="86" y="30" fill="#64748b" font-family="ui-monospace, SFMono-Regular, Menlo, monospace" font-size="12" font-weight="600">paper-write-4ss.pipeline</text>
+    <rect x="348" y="15" width="106" height="22" rx="11" fill="#064e3b" fill-opacity=".8" stroke="#059669" stroke-opacity=".7"/>
+    <circle cx="361" cy="26" r="3.5" fill="#34d399"/>
+    <text x="370" y="30" fill="#a7f3d0" font-family="ui-sans-serif, system-ui, sans-serif" font-size="11" font-weight="700">STANDALONE</text>
+    <line x1="16" y1="48" x2="456" y2="48" stroke="#1e293b" stroke-width="1"/>
+
+    <g font-family="ui-monospace, SFMono-Regular, Menlo, monospace" font-size="12">
+      <text x="24" y="78" fill="#fb7185" font-weight="700">ROUTE</text>
+      <text x="108" y="78" fill="#cbd5e1">方法协议 · 发表范式</text>
+      <text x="24" y="104" fill="#c084fc" font-weight="700">DRAFT</text>
+      <text x="108" y="104" fill="#cbd5e1">章节标准 · 范文提示</text>
+      <text x="24" y="130" fill="#38bdf8" font-weight="700">POLISH</text>
+      <text x="108" y="130" fill="#cbd5e1">润色 · 改写 · 检查</text>
+      <text x="24" y="156" fill="#34d399" font-weight="700">SCAN</text>
+      <text x="108" y="156" fill="#cbd5e1">反模式 · 复杂度</text>
+    </g>
+
+    <g transform="translate(20 180)">
+      <rect x="0" y="0" width="136" height="74" rx="12" fill="#1c0a10" stroke="#7f1d1d" stroke-width="1"/>
+      <text x="68" y="36" text-anchor="middle" fill="#fb7185" font-family="ui-sans-serif, system-ui, sans-serif" font-size="26" font-weight="800">4</text>
+      <text x="68" y="58" text-anchor="middle" fill="#fb7185" font-family="ui-sans-serif, system-ui, PingFang SC, sans-serif" font-size="12">方法协议</text>
+      <rect x="148" y="0" width="136" height="74" rx="12" fill="#111c30" stroke="#1e2e4a" stroke-width="1"/>
+      <text x="216" y="36" text-anchor="middle" fill="#38bdf8" font-family="ui-sans-serif, system-ui, sans-serif" font-size="26" font-weight="800">2</text>
+      <text x="216" y="58" text-anchor="middle" fill="#38bdf8" font-family="ui-sans-serif, system-ui, PingFang SC, sans-serif" font-size="12">发表范式</text>
+      <rect x="296" y="0" width="136" height="74" rx="12" fill="#201124" stroke="#48183e" stroke-width="1"/>
+      <text x="364" y="36" text-anchor="middle" fill="#c084fc" font-family="ui-sans-serif, system-ui, sans-serif" font-size="26" font-weight="800">6</text>
+      <text x="364" y="58" text-anchor="middle" fill="#c084fc" font-family="ui-sans-serif, system-ui, PingFang SC, sans-serif" font-size="12">写作顾问</text>
+    </g>
+
+    <g transform="translate(24 292)" font-family="ui-sans-serif, system-ui, -apple-system, sans-serif" font-size="12">
+      <text fill="#64748b" font-weight="500">适配：</text>
+      <text x="42" fill="#cbd5e1" font-weight="600">Claude Desktop · Cursor · Oh My Pi · Windsurf</text>
+    </g>
+  </g>
+</svg>
