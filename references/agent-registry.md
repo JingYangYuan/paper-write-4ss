@@ -2,7 +2,7 @@
 
 > 本文件是 paper-master-4ss 所有内部子智能体的权威注册表。首次执行时由总控读取，按模块路由后派发对应顾问。
 >
-> 总智能体数: **46** | 覆盖子智能体模块: **7** | 更新日期: 2026-07-20
+> 总智能体数: **49** | 覆盖子智能体模块: **8** | 更新日期: 2026-09-05
 
 ## 强制派发与参考库回查
 
@@ -103,6 +103,18 @@
 
 ---
 
+### Check 模块 (全流程审稿检查) — 3 智能体
+
+| # | Agent Name | 文件路径 | 职责 | 工具 |
+|---|-----------|---------|------|------|
+| 47 | `paper-check-editorial-screening-reviewer` | `paper-master-4ss/modules/check/agents/editorial-screening-reviewer.md` | 首筛、创新可见度、题摘关键词/引言和期刊适配 | Read, Grep |
+| 48 | `paper-check-argument-integrity-reviewer` | `paper-master-4ss/modules/check/agents/argument-integrity-reviewer.md` | 问题—论点—证据—结构—结尾闭环与十六缺憾 | Read, Grep |
+| 49 | `paper-check-ethics-conformance-reviewer` | `paper-master-4ss/modules/check/agents/ethics-conformance-reviewer.md` | 引文注释和技术规范；无来源只标待核验 | Read, Grep |
+
+**触发场景**: 完整审稿并行派发三者并等待终态 → `agent-synthesis-check`；单项检查只派最少对应角色并记录未派发理由。
+
+---
+
 ### Submission 模块 (投稿整备) — 3 智能体
 
 | # | Agent Name | 文件路径 | 职责 | 工具 |
@@ -138,6 +150,7 @@
 | **大纲构建** | structure + material-classification (并行) → chapter-logic + evidence-map (并行) → gap-review |
 | **数据分析** | variable-inventory + variable-role-mapping + variable-quality (并行) → variable-discovery-pack → variable-cleaning → analysis-plan → identification-model → main-regression-code + mechanism-extension-code + causal-robustness-code (并行) → robustness + result-reporting → export-reporting-code → CLI执行与质量门控 |
 | **论文写作** | structure-writing(规划/dispatch-plan) → chapter-draft-writer(多段可并行) → argument + material-integration(复核) → style-consultant(文风总控) → scanner循环 → chapter-reviewer |
+| **全流程审稿** | editorial-screening + argument-integrity + ethics-conformance（并行，等待终态）→ agent-synthesis-check；单项检查只派最少对应角色 |
 | **投稿整备** | format-check + citation-integrity (并行) → journal-package |
 | **知识更新** | purpose-routing → knowledge-extraction + literature-enrichment(按需) → target-routing → review-gate；self-update 必须 target-routing + review-gate 双重审核 |
 
@@ -145,11 +158,7 @@
 
 ## 路径前缀
 
-所有路径相对于 skill 根目录:
-
-```
-/Users/yjy/.skills-manager/skills/paper-master-4ss/
-```
+所有路径相对于 `paper-master-4ss/` 技能包根目录解析，不要写死宿主安装路径（例如 `~/.agents/skills/` 或 `~/.skills-manager/skills/`）。
 
 Agent 文件均为独立 Markdown 文件，包含 frontmatter (name/description/model/tools) + 职责说明 + 参考库回查协议 + 审阅重点 + 输出格式。
 

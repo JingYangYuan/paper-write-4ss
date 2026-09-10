@@ -150,7 +150,23 @@ python3 scripts/example_extractor.py --help
 
 ---
 
-### 2.6 submission 模块
+### 2.6 check 模块
+
+**路径**: `paper-master-4ss/modules/check/`
+
+**依赖**: 无外部依赖。纯 Markdown 知识库与 agent 流程；完整审稿的产物写入 `05-writing/reviews/`。
+
+**验收**:
+```bash
+test -f paper-master-4ss/modules/check/SKILL.md
+test -f paper-master-4ss/modules/check/glossary.md
+test -f paper-master-4ss/modules/check/patterns.md
+test -f paper-master-4ss/modules/check/cheatsheet.md
+```
+
+---
+
+### 2.7 submission 模块
 
 **路径**: `paper-master-4ss/modules/submission/`
 
@@ -181,7 +197,7 @@ python3 paper-master-4ss/modules/submission/scripts/check_citations.py --help
 
 ---
 
-### 2.7 update 模块
+### 2.8 update 模块
 
 **路径**: `paper-master-4ss/modules/update/`
 
@@ -243,6 +259,13 @@ python3 scripts/complexity_analyzer.py --help >/dev/null 2>&1 && echo "complexit
 python3 scripts/writing_scanner.py --help >/dev/null 2>&1 && echo "writing_scanner OK"
 
 echo ""
+echo ""
+echo "=== check ==="
+test -f paper-master-4ss/modules/check/SKILL.md && echo "check/SKILL.md OK"
+test -f paper-master-4ss/modules/check/glossary.md && echo "check/glossary.md OK"
+test -f paper-master-4ss/modules/check/patterns.md && echo "check/patterns.md OK"
+test -f paper-master-4ss/modules/check/cheatsheet.md && echo "check/cheatsheet.md OK"
+
 echo "=== submission ==="
 python3 -c "
 import importlib

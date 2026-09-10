@@ -80,7 +80,8 @@ Write 模块的 `paper-write-chapter-draft-writer` 是特殊的可重复派发 c
 | 文献综述 | design 的 `theory-consultant` 校准理论锚点；outline 的 `structure-consultant` 预判结构承接；正文成稿按 `master/literature-review-protocol.md` 交接 write 的 `structure-writing` 与 `chapter-draft-writer` |
 | 大纲构建 | write 的 `structure-writing` 预判写作顺序；analysis 的 `result-reporting` 预判经验章节需求 |
 | 数据分析 | write 的 `argument-consultant` 预判结果声称边界；submission 的 `citation-integrity` 预判引用回流 |
-| 写作润色 | submission 的 `format-check` 和 `citation-integrity` 预判投稿风险 |
-| 投稿整备 | write 的 `chapter-standard-reviewer` 复核需回流正文的问题 |
+| 写作润色 | check 的 editorial-screening、argument-integrity、ethics-conformance 做综合复核；通过质量门后才交 submission |
+| 全流程审稿 | check 的 editorial-screening + argument-integrity + ethics-conformance（完整审稿并行，必须等待终态）；实质修改精确回流 write 或前序模块 |
+| 投稿整备 | write 的 `chapter-standard-reviewer` 复核需回流正文的问题；check 已通过后再处理格式与投稿包 |
 
 跨模块顾问只做预判和风险提示，不替代主模块执行。

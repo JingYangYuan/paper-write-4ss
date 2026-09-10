@@ -11,7 +11,7 @@
 | 文献 | 15 | `paper-registry.csv`、`papers/`、`fulltext/`、`review-evidence.csv`、`review-outline.md`、`review-gaps.md` 与文献地图/空白/理论对话产物 |
 | 大纲 | 10 | `paper-outline.md`、`paragraph-blueprint.md`、`evidence-map.md`、`gap-report.md` |
 | 分析 | 25 | 仅当最新设计报告明确 `analysis_required: true` 时：分析计划、变量字典、真实执行 run-log、`script-index.md`、CSV 表格、图形、guard 审计 |
-| 写作 | 15 | `05-writing/literature-review.md`（综述净稿）、`manuscript.md`、`manuscript-[slug]-[date].md`、章节草稿、正文格式合规检查、扫描报告、修订记录、顾问综合 |
+| 写作 | 15 | `05-writing/literature-review.md`（综述净稿）、`manuscript.md`、`manuscript-[slug]-[date].md`、章节草稿、正文格式合规检查、扫描报告、修订记录、`reviews/paper-check-report-*.md`（可替代同类审查证据，不叠加加分）与 write/check 顾问综合（同类综合证据不叠加） |
 | 投稿 | 10 | `submission.docx`、格式检查、引用缺口、投稿清单、cover/response letter |
 
 ## 2. 两个分数

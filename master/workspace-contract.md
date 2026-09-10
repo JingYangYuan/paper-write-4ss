@@ -30,7 +30,7 @@ paper-workspace/
 | lit | `paper-workspace/02-literature/` | `papers/`、`fulltext/`、唯一 `paper-registry.csv`、`review-evidence.csv`、`review-outline.md`、`review-gaps.md`、`literature-map.md`、`gap-map.md`、`hypothesis-derivation.md`（实证假设路径）；`plans/download-plan.tsv` 为由注册表即时生成的临时下载计划 |
 | outline | `paper-workspace/03-outline/` | `paper-outline.md`, `paragraph-blueprint.md`, `evidence-map.md`, `gap-report.md` |
 | analysis | `paper-workspace/04-analysis/` | `analysis-plan.md`, `variable-dictionary.csv`, `tables/`, `figures/`, `reports/results-brief.md` |
-| write | `paper-workspace/05-writing/` | `literature-review.md`（独立综述章节）、`manuscript.md`, `manuscript-[slug]-[date].md`, `plans/`, `drafts/`, `assembly/`, `reviews/`, `revisions/styled-[slug]-[date].md`, `scans/scan-report.md` |
+| write | `paper-workspace/05-writing/` | `literature-review.md`（独立综述章节）、`manuscript.md`, `manuscript-[slug]-[date].md`, `plans/`, `drafts/`, `assembly/`, `reviews/`（含 `paper-check-report-*`、`paper-check-matrix-*`、`paper-check-revision-list-*`）、`revisions/styled-[slug]-[date].md`, `scans/scan-report.md`；check 顾问综合写入 `_logs/agents/check-[YYYY-MM-DD]/agent-synthesis-check-[YYYY-MM-DD].md` |
 | submission | `paper-workspace/06-submission/` | `submission.docx`, `format-check-report.md`, `citation-normalized.md`, `citation-gap-report.md`, `submission-checklist.md`, `cover-letter.md`, `response-letter.md` |
 | update | `paper-workspace/07-update/` | `update-report.md`, `review-checklist.md`, `proposed-diffs/`, `evidence/`, `merge-instructions.md` |
 

@@ -545,12 +545,12 @@ def score_write(workspace: Path) -> dict[str, Any]:
     else:
         missing.append("assembly/source-map-*.md 与 assembly-check-*.json")
 
-    reviews = has_files(root / "reviews", ["main-agent-review-*.md"])
+    reviews = has_files(root / "reviews", ["main-agent-review-*.md", "paper-check-report-*.md", "paper-check-matrix-*.md"])
     if reviews:
         score += 2
         evidence.extend(str(p) for p in reviews[:2])
     else:
-        missing.append("reviews/main-agent-review-*.md")
+        missing.append("reviews/main-agent-review-*.md 或 paper-check-report-*.md")
 
     revisions = has_files(root / "revisions", ["styled-*.md", "*.md"])
     if revisions:
@@ -566,12 +566,12 @@ def score_write(workspace: Path) -> dict[str, Any]:
     else:
         missing.append("scans/scan-report-*.md")
 
-    synth = agent_synthesis(workspace, "write")
+    synth = agent_synthesis(workspace, "write") + agent_synthesis(workspace, "check")
     if synth:
         score += 1
         evidence.extend(str(p) for p in synth[:2])
     else:
-        missing.append("_logs/agents/write-*/agent-synthesis-write-*.md")
+        missing.append("_logs/agents/write-*/agent-synthesis-write-*.md 或 check-*/agent-synthesis-check-*.md")
 
     fix_next = "补齐 " + "、".join(missing) + "。" if missing else "保持多 writer 派发、脚本拼接、主审查和扫描闭环。"
     attribution = "流程" if any("review" in item or "assemble" in item or "writer" in item for item in missing) else "知识"

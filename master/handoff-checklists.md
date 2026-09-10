@@ -59,17 +59,18 @@
 - 用户可理解的下一步建议：把已验证的结果、限制和不可声称内容交给写作阶段，先写最有证据支撑的章节。
 - 现在不必做的事：不要扩大战果或补写超出结果的理论声称。
 
-## write -> submission
+## write -> check
 
-- 正文净稿路径：`manuscript.md`、`manuscript-[slug]-[date].md` 或 `revisions/styled-[slug]-[date].md`
-- 正文格式合规状态：无加粗、任务包、材料清单、表格化元说明、引用块、代码块、HTML 注释、Mermaid 或 source 注释
-- 内部 draft/source map 路径（仅用于追溯，不作为默认投稿稿）
-- 扫描报告与修订记录
-- 参考文献一致性状态
-- 投稿伦理、署名和数据可用性检查
-- 目标期刊格式差距
-- Word 输出模板、GB/APA 引用体例与参考文献缺口
-- submission 完成后更新 `submission-checklist.md`、`format-check-report.md` 与参考文献缺口状态
-- Rubric 阶段质量分、阻断项和不可声称内容
-- 用户可理解的下一步建议：进入投稿整备，优先解决格式、引用、模板和投稿说明文件。
-- 现在不必做的事：不要在格式阶段大幅改动核心论证，除非格式检查或引用缺口暴露实质问题。
+- 最新正文净稿：`manuscript.md`、`manuscript-[slug]-[date].md` 或 `revisions/styled-[slug]-[date].md`
+- 正文格式合规状态、扫描报告、修订记录与内部 source map（仅追溯，不作为投稿稿）
+- 研究问题、证据边界、待核验引文与目标期刊信息
+- 用户可理解的下一步建议：先让 check 复核题摘、论证、诚信和技术风险，避免把实质缺口带入格式整备。
+- 现在不必做的事：不要先导出投稿Word，核心论证和证据仍可能回流。
+
+## check -> submission
+
+- `paper-check-report-*`、`paper-check-matrix-*`、`paper-check-revision-list-*` 与总体状态
+- 阻断项处理状态、待核验引用项、已完成修改的复核证据与仍需回流的问题
+- 目标期刊公开要求、Word模板、GB/APA引用体例与参考文献缺口
+- 用户可理解的下一步建议：仅在总体状态允许时进入投稿整备，优先处理期刊硬性格式和材料完整性。
+- 现在不必做的事：不要以Word模板修补未解决的论证、事实或诚信问题。

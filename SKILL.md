@@ -122,6 +122,7 @@ python3 scripts/writing_scanner.py --scan paper.md
 11. 运行 `python3 scripts/writing_scanner.py --scan /abs/project/paper-workspace/05-writing/revisions/styled-[slug]-[YYYY-MM-DD].md` 记录快速统计。
 12. 若扫描器发现高危问题，`style-consultant` 作为文风总控必须按 `rewrite-instructions` 自然重写，再次运行 `--scan`，循环至高危归零；无法归零时，在扫描报告和最终回复中记录残余问题。
 13. 最后派发 `paper-write-chapter-standard-reviewer` 做章节硬门槛复核。
+14. 完整质量门交给 `paper-master-4ss/modules/check/`：scanner 循环与 `chapter-standard-reviewer` 完成后，不得把全文审稿、编辑首筛、拒稿风险诊断或投稿前综合自检做成 write 内部检查。语言扫描与复杂度诊断仍留 write。将正文净稿、扫描报告、source map、证据边界和目标期刊信息按 `master/handoff-checklists.md` 的 `write -> check` 交接。
 
 已有草稿润色任务不进入 `writing-dispatch-plan` 和 `paper-write-chapter-draft-writer`，直接从 `paper-write-style-consultant` 文风总控、`writing_scanner.py --report`、`writing_scanner.py --instructions` 和 `writing_scanner.py --scan` 开始。
 
