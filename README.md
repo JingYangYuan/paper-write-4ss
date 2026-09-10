@@ -24,7 +24,7 @@
 
 先经研究方法协议与发表范式双层路由，再按章节标准和范文提示词写作、润色和检查。产出正文净稿（标题层级 + 自然段），过程材料不得拼进正文。
 
-配备 `writing_scanner.py` 与 `complexity_analyzer.py`，用于语言反模式扫描和文本复杂度诊断。
+配备 `writing_scanner.py` 与 `complexity_analyzer.py`，用于语言反模式扫描和文本复杂度诊断。语言扫描仍留本模块；全文审稿、编辑首筛、拒稿风险诊断交给同级 [`paper-check-4ss`](https://github.com/JingYangYuan/paper-check-4ss)。
 
 ## 路由
 
@@ -49,7 +49,7 @@ git clone https://github.com/JingYangYuan/paper-write-4ss.git
 
 - 包内相对路径相对本包根目录解析
 - `master/` 与部分 `references/` 是导出时的协议快照
-- 更新方式：修改总控对应模块后重新导出，不要直接改本仓库
+- 更新方式：修改总控任一模块、家族表、路由或协议后，必须无参数重新导出**全部**独立包并 push 全部 GitHub 仓；不要只改本仓库，也不要只导出改过的那一个。
 
 ## License
 
