@@ -7,7 +7,7 @@
 ## 强制派发与参考库回查
 
 - 命名规则：`Agent Name` 列是唯一可执行身份，必须等于对应 agent 文件 frontmatter 的 `name:`，也称 canonical agent name。`modules/.../agents/*.md` 是角色协议路径；短名如 `theory-consultant`、`chapter-draft-writer` 只能用于阅读、口语引用和矩阵简写，不得直接作为执行身份。
-- 工具列是 Claude Code 兼容能力别名，不是跨宿主硬要求。Claude Code、OpenCode、Codex 与 ZCode 都必须先按 `references/runtime-adapter.md` 和 `references/agent-software-adapters.md` 映射到通用能力；例如 `Read`→`read_file`、`Grep`→`search_text`、`WebSearch`→`web_search`、`WebFetch`→`web_fetch`。
+- 工具列是 Claude Code 兼容能力别名，不是跨宿主硬要求。Claude Code、OpenCode、Codex、ZCode 与 OMP 都必须先按 `references/runtime-adapter.md` 和 `references/agent-software-adapters.md` 映射到通用能力；例如 `Read`→`read_file`、`Grep`→`search_text`、`WebSearch`→`web_search`、`WebFetch`→`web_fetch`、浏览器工具→`browser_control`。
 - 别名解析规则：短名必须在明确模块上下文中解析到本注册表对应行；跨模块、阶段不明或同名风险不明时，不得猜测，必须先回到本注册表按模块、阶段和路径选择 canonical agent name。
 - 配送一致性门槛：实际派发的 agent 必须与用户选择、模块表格或跨模块矩阵经过规范化后的清单一致。派发清单必须保留“原文选择 → canonical agent name → agent 文件路径”的映射；若执行中需要增删，先记录变更理由再派发。
 - 默认采用情境化调度：先说明当前决策风险、选择角色及未选择其他角色的理由，再派发最少必要智能体；不得仅按理论/实证标签、模块名称或固定数量派发。

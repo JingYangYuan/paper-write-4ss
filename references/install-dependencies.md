@@ -38,13 +38,13 @@ python3 paper-master-4ss/modules/design/scripts/frame_locator.py --help
 
 | 依赖 | 用途 | 强制 |
 |------|------|------|
-| ZCode 内置浏览器控制（browser-use） | CNKI 网页操纵（kns8s 专业检索） | 是 |
-| ZCode 桌面版（浏览器面板可见） | CNKI 登录、验证码人工完成 | 是 |
+| 浏览器控制后端（ZCode 内置 browser-use，或 OMP pi-chrome） | CNKI 网页操纵（kns8s 专业检索） | 是 |
+| 可见浏览器窗口（ZCode 面板，或 OMP `Pi Session:` 标签） | CNKI 登录、验证码人工完成 | 是 |
 | Zotero Desktop + Connector | 本地文献库保存与去重 | 否 |
 | Zotero MCP（推荐 `zotero-local-mcp`） | 代理检索本地库、写入题录/摘要、读取附件全文 | 否 |
 
 **快速检查**:
-浏览器控制为 ZCode 内置能力，无需安装；CNKI 阶段开始前按 `paper-master-4ss/modules/lit/references/cnki-kns8s-closed-loop.md` 的 Step 6.0 做可用性检查（列标签页/新建标签页/导航 + 读取轻量页面状态）。
+ZCode 后端为内置能力，无需安装；OMP 后端需一次性加载 pi-chrome 伴生 Chrome 扩展（`pi install npm:pi-chrome` → `/chrome onboard` → `/chrome authorize` → `/chrome doctor`），详见 `paper-master-4ss/modules/lit/references/pi-chrome-browser.md` 与公开文档 <https://github.com/JingYangYuan/pi-chrome-cnki>。CNKI 阶段开始前按 `paper-master-4ss/modules/lit/references/cnki-kns8s-closed-loop.md` §2 做可用性检查（列标签页/新建标签页/导航 + 读取轻量页面状态）。
 
 ---
 

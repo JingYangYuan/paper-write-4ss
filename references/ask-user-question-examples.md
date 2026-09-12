@@ -1,6 +1,6 @@
 # ask_user 示例模块规范
 
-本文档定义 `paper-master-4ss` 内所有用户提问、确认和阻断门槛的示例写法。`ask_user` 是四宿主通用能力名；Claude Code 与 ZCode 可映射为 AskUserQuestion，OpenCode/Codex 映射为各自的提问能力或直接提问。各模块可以保留局部业务选项，但字段结构应统一为 `question`、`header`、`options`。
+本文档定义 `paper-master-4ss` 内所有用户提问、确认和阻断门槛的示例写法。`ask_user` 是各宿主通用能力名；Claude Code 与 ZCode 可映射为 AskUserQuestion，OMP 映射为 `ask` 工具，OpenCode/Codex 映射为各自的提问能力或直接提问。各模块可以保留局部业务选项，但字段结构应统一为 `question`、`header`、`options`。
 
 ## 一、标准字段
 

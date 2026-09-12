@@ -7,7 +7,7 @@
 - 默认采用情境化调度：先识别当前决策、材料、交接和质量风险，再选择最少必要顾问；不得只因理论/实证标签、模块名称或“实质性任务”自动派发固定数量。
 - 全流程、主题模糊、材料复杂、跨模块串联或质量风险高时，可增加独立复核；派发清单必须说明每个角色解决的风险及未派发其他角色的理由。
 - 普通 orchestration 是多 canonical agent 顾问派发；显式 Agent Team 是同一 canonical agent 的多视角辩论，二者不可互相替代。
-- Agent 文件 frontmatter 中的 `tools:` 只表示 Claude Code 兼容能力别名。Claude Code、OpenCode、Codex 与 ZCode 都必须经 runtime adapter 映射到 `read_file`、`search_text`、`web_search`、`web_fetch`、`spawn_agent` 等通用能力；缺少能力时按本协议记录回退，不得伪造工具结果。
+- Agent 文件 frontmatter 中的 `tools:` 只表示 Claude Code 兼容能力别名。Claude Code、OpenCode、Codex、ZCode 与 OMP 都必须经 runtime adapter 映射到 `read_file`、`search_text`、`web_search`、`web_fetch`、`browser_control`、`spawn_agent` 等通用能力；缺少能力时按本协议记录回退，不得伪造工具结果。
 - 派发前必须先规范化 agent 身份：凡用户选择、模块表格、路由矩阵或过程计划中出现短名、路径名或角色描述，都先对照 `references/agent-registry.md` 转成 agent 文件 frontmatter 的 `name:`，即 canonical agent name。`Agent Name` 是唯一执行身份；短名和 `modules/.../agents/*.md` 路径只作别名、阅读入口和角色协议路径。
 - 规范化后的派发清单必须同时写出：用户选择或模块选择原文、canonical agent name、agent 文件路径、派发顺序、并行或 `sequential-review` 状态。实际派发不得偏离该清单；如需增删顾问，必须先更新清单并说明理由。
 - 每个顾问必须先执行参考库回查：读取 `paper-master-4ss/modules/<module>/` 下本模块明确对应的 `references/`、`frame/`、`resources/`、`chapters/`、`scripts/` 或相关 phase 文件，并在顾问意见中列出已读取路径、采用框架、依据条款和参考缺口。
