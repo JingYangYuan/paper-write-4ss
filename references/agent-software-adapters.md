@@ -63,7 +63,7 @@
 - 文件与搜索用 `read` / `grep` / `glob`；命令用 `bash`；网页检索用 `web_search` 或已接入的 exa MCP，`read` 可直接读 URL 正文。
 - 顾问派发用 `task` 工具，单批 `tasks[]` 即 `parallel_review`；只读调研用 `scout`，不可并行时记录 `sequential-review`。OMP 无 Agent Teams 形态，显式 Team 请求回退为普通顾问派发。
 - 结构化提问用 `ask` 工具；Zotero 操作用已接入的 zotero MCP。
-- **`browser_control` 用 pi-chrome `chrome_*` 工具**：驱动用户真实 Chrome profile。CNKI 阶段必须先读 `paper-master-4ss/modules/lit/references/pi-chrome-browser.md`（安装、授权、目标模型、失败恢复；公开文档 <https://github.com/JingYangYuan/pi-chrome-cnki>），再按 `references/cnki-kns8s-closed-loop.md` 执行。关键约束：不传 `targetId`、点击与读取走 `chrome_evaluate`、异步脚本不得 `awaitPromise`、Cookie 走回环 sink `paper-master-4ss/modules/lit/scripts/cnki/cookie_sink.py`。
+- **`browser_control` 用 pi-chrome `chrome_*` 工具**：驱动用户真实 Chrome profile。CNKI 阶段必须先读 `paper-master-4ss/modules/lit/references/pi-chrome-browser.md`（安装、授权、目标模型、失败恢复；公开文档 <https://github.com/JingYangYuan/pi-chrome-cnki>），再按 `references/cnki-kns8s-closed-loop.md` 执行。关键约束：不传 `targetId`、点击与读取走 `chrome_evaluate`、异步脚本不得 `awaitPromise`、Cookie 走回环 sink `paper-master-4ss/modules/lit/scripts/cnki/cookie_sink.py`。npm 不可用或扩展"装了连不上"时改用离线镜像 <https://github.com/JingYangYuan/pi-chrome-mirror>（`omp install <clone 路径>`，含 offscreen 保活的完整伴生扩展）。
 - OMP 不自动触发 paper-master guard：执行分析命令后显式运行 `python3 scripts/paper_master_guard.py post-bash --workspace paper-workspace`，交付前显式运行 `stop-check`。如需自动触发，可在 `.omp/hooks/` 用 `tool_result` 事件扩展实现（见 OMP hooks 文档）。
 - 长期选择写入 `.omp/AGENTS.md`（OMP 原生项目上下文）的 paper-master 标记块，或工作区 `AGENTS.md`；不要为 OMP 默认创建 `CLAUDE.md`。
 

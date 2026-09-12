@@ -44,7 +44,7 @@ python3 paper-master-4ss/modules/design/scripts/frame_locator.py --help
 | Zotero MCP（推荐 `zotero-local-mcp`） | 代理检索本地库、写入题录/摘要、读取附件全文 | 否 |
 
 **快速检查**:
-ZCode 后端为内置能力，无需安装；OMP 后端需一次性加载 pi-chrome 伴生 Chrome 扩展（`pi install npm:pi-chrome` → `/chrome onboard` → `/chrome authorize` → `/chrome doctor`），详见 `paper-master-4ss/modules/lit/references/pi-chrome-browser.md` 与公开文档 <https://github.com/JingYangYuan/pi-chrome-cnki>。CNKI 阶段开始前按 `paper-master-4ss/modules/lit/references/cnki-kns8s-closed-loop.md` §2 做可用性检查（列标签页/新建标签页/导航 + 读取轻量页面状态）。
+ZCode 后端为内置能力，无需安装；OMP 后端需一次性加载 pi-chrome 伴生 Chrome 扩展（`pi install npm:pi-chrome` → `/chrome onboard` → `/chrome authorize` → `/chrome doctor`），详见 `paper-master-4ss/modules/lit/references/pi-chrome-browser.md` 与公开文档 <https://github.com/JingYangYuan/pi-chrome-cnki>；npm 不可用或扩展"装了连不上"时用离线镜像 <https://github.com/JingYangYuan/pi-chrome-mirror>。CNKI 阶段开始前按 `paper-master-4ss/modules/lit/references/cnki-kns8s-closed-loop.md` §2 做可用性检查（列标签页/新建标签页/导航 + 读取轻量页面状态）。
 
 ---
 
