@@ -16,6 +16,7 @@ paper-workspace/
 ├── 05-writing/
 ├── 06-submission/
 ├── 07-update/
+├── figures/
 ├── _logs/
 │   ├── agents/
 │   └── hook-audit/
@@ -33,6 +34,7 @@ paper-workspace/
 | write | `paper-workspace/05-writing/` | `literature-review.md`（独立综述章节）、`manuscript.md`, `manuscript-[slug]-[date].md`, `plans/`, `drafts/`, `assembly/`, `reviews/`（含 `paper-check-report-*`、`paper-check-matrix-*`、`paper-check-revision-list-*`）、`revisions/styled-[slug]-[date].md`, `scans/scan-report.md`；check 顾问综合写入 `_logs/agents/check-[YYYY-MM-DD]/agent-synthesis-check-[YYYY-MM-DD].md` |
 | submission | `paper-workspace/06-submission/` | `submission.docx`, `format-check-report.md`, `citation-normalized.md`, `citation-gap-report.md`, `submission-checklist.md`, `cover-letter.md`, `response-letter.md` |
 | update | `paper-workspace/07-update/` | `update-report.md`, `review-checklist.md`, `proposed-diffs/`, `evidence/`, `merge-instructions.md` |
+| mechanigraph | `paper-workspace/figures/` | `mechanism-*.svg`（纯矢量主图）、`mechanism-*.png`（无头渲染预览图）、`mechanism-metadata-*.json`（构型与自检元数据） |
 
 ## 日志与索引
 

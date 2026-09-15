@@ -12,9 +12,10 @@
 | 全文审稿、编辑首筛、内容与形式联合检查、拒稿风险诊断、投稿前综合自检 | check | `paper-master-4ss/modules/check/SKILL.md` |
 | 投稿前的 Word、引文体例、模板、投稿包、cover letter、response letter | submission | `paper-master-4ss/modules/submission/SKILL.md` |
 | 更新知识边界、补充理论框架、补充写作范式、补充方法/流程协议、补充工具模板、从书籍/论文/笔记/方法手册/工具日志吸收知识，或为 update 模块自身生成待审核更新包 | update | `paper-master-4ss/modules/update/SKILL.md` |
+| 学术机制图、理论机制图、分析框架图、演进模型、政策网络、治理体系、纯矢量SVG、机制图复刻、机制图生成、因果图绘制（兼容 mechanismgraph / mechanigraph 拼写） | mechanigraph | `paper-master-4ss/modules/mechanigraph/SKILL.md`（出图前 ask_user 确认风格偏好，出图后无头 Chrome 渲染自检） |
 | 不知道下一步、整理项目状态、串联全流程 | master | 先读 `_index/paper-roadmap.md`、`_index/project-state.md` 与 `_index/handoff-status.md`，再由 design 确认模式和研究取向；不得默认进入 analysis |
 
-意图消歧：仅语言润色/扫描 → write；全文审稿/编辑首筛/拒稿风险/投稿前综合自检 → check；仅 Word/引文体例/模板/投稿包 → submission；项目成熟度评分 → master guard。
+意图消歧：过程报告内的轻量流程/逻辑链使用 Mermaid（遵循 `master/output-protocol.md`）；论文正文/期刊发表级的纯矢量因果图、机制图、分析框架图由 `mechanigraph` 生成 SVG/PNG；仅语言润色/扫描 → write；全文审稿/编辑首筛/拒稿风险/投稿前综合自检 → check；仅 Word/引文体例/模板/投稿包 → submission；项目成熟度评分 → master guard。
 
 ## 优先级
 
@@ -34,3 +35,4 @@
 - 综述成稿：lit 主导，完成证据表与论证蓝图后按 `master/literature-review-protocol.md` 交接 write/structure-writing 与 write/chapter-draft-writer 成稿，正文落 `05-writing/literature-review.md`。
 - 分析到写作：analysis 主导，追加 write/argument 和 write/material-integration 预判结果声称边界。
 - 写作到审稿到投稿：write 交出正文净稿、扫描报告、source map、证据边界和目标期刊信息 → check 做综合复核并将实质问题精确回流 design/lit/outline/analysis/write → 通过质量门后 submission 处理Word、体例与投稿包。
+- 机制图协同：design 理论锚定后可触发 mechanigraph 生成全局理论分析框架图；analysis 中介/调节因果识别后可触发 mechanigraph 生成实证机制图；产物统一保存至 `paper-workspace/figures/`，write 正文写作直接调用并生成正文图示引用语句。

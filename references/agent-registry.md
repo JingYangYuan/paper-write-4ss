@@ -2,12 +2,12 @@
 
 > 本文件是 paper-master-4ss 所有内部子智能体的权威注册表。首次执行时由总控读取，按模块路由后派发对应顾问。
 >
-> 总智能体数: **49** | 覆盖子智能体模块: **8** | 更新日期: 2026-09-05
+> 总智能体数: **51** | 覆盖子智能体模块: **9** | 更新日期: 2026-09-15
 
 ## 强制派发与参考库回查
 
 - 命名规则：`Agent Name` 列是唯一可执行身份，必须等于对应 agent 文件 frontmatter 的 `name:`，也称 canonical agent name。`modules/.../agents/*.md` 是角色协议路径；短名如 `theory-consultant`、`chapter-draft-writer` 只能用于阅读、口语引用和矩阵简写，不得直接作为执行身份。
-- 工具列是 Claude Code 兼容能力别名，不是跨宿主硬要求。Claude Code、OpenCode、Codex、ZCode 与 OMP 都必须先按 `references/runtime-adapter.md` 和 `references/agent-software-adapters.md` 映射到通用能力；例如 `Read`→`read_file`、`Grep`→`search_text`、`WebSearch`→`web_search`、`WebFetch`→`web_fetch`、浏览器工具→`browser_control`。
+- 工具列是 Claude Code 兼容能力别名，不是跨宿主硬要求。Claude Code、OpenCode、Codex、ZCode、OMP 与 Antigravity 都必须先按 `references/runtime-adapter.md` 和 `references/agent-software-adapters.md` 映射到通用能力；例如 `Read`→`read_file`、`Grep`→`search_text`、`WebSearch`→`web_search`、`WebFetch`→`web_fetch`、浏览器工具→`browser_control`。
 - 别名解析规则：短名必须在明确模块上下文中解析到本注册表对应行；跨模块、阶段不明或同名风险不明时，不得猜测，必须先回到本注册表按模块、阶段和路径选择 canonical agent name。
 - 配送一致性门槛：实际派发的 agent 必须与用户选择、模块表格或跨模块矩阵经过规范化后的清单一致。派发清单必须保留“原文选择 → canonical agent name → agent 文件路径”的映射；若执行中需要增删，先记录变更理由再派发。
 - 默认采用情境化调度：先说明当前决策风险、选择角色及未选择其他角色的理由，再派发最少必要智能体；不得仅按理论/实证标签、模块名称或固定数量派发。
@@ -139,6 +139,17 @@
 
 **触发场景**: 目的路由→候选抽取→文献补强(按需)→统一目标面路由→兼容性与风险门控→审核包。
 
+
+### Mechanigraph 模块 (学术机制图) — 2 智能体
+
+| # | Agent Name | 文件路径 | 职责 | 工具 |
+|---|-----------|---------|------|------|
+| 50 | `paper-mechanigraph-topology-consultant` | `paper-master-4ss/modules/mechanigraph/agents/topology-consultant.md` | 因果实体提取、8 大经典学术拓扑匹配、制图风格偏好推荐 | Read, Grep |
+| 51 | `paper-mechanigraph-svg-designer` | `paper-master-4ss/modules/mechanigraph/agents/svg-designer.md` | 纯矢量 SVG 居中几何计算、字阶排版、纯黑白零灰色红线、无头渲染与自检闭环 | Read, Write, Bash, Grep |
+
+**触发场景**: 文本因果逻辑解析出图、既有机制图复刻重绘、理论分析框架图构建、实证机制链条图示化。
+
+---
 ---
 
 ## 跨模块并行触发矩阵
@@ -154,6 +165,7 @@
 | **投稿整备** | format-check + citation-integrity (并行) → journal-package |
 | **知识更新** | purpose-routing → knowledge-extraction + literature-enrichment(按需) → target-routing → review-gate；self-update 必须 target-routing + review-gate 双重审核 |
 
+| **学术机制图** | topology-consultant (构型匹配与风格准备) → ask_user 风格确认 → svg-designer (纯矢量绘制、无头渲染自检与闭环修复) |
 ---
 
 ## 路径前缀

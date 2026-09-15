@@ -1,14 +1,15 @@
 # Hooks and Evaluation
 
-本文档把 guard 审计与评估机制落到 `paper-master-4ss` 项目。目标是把高风险质量规则沉淀为机制层约束，而不是依赖顾问口头提醒。Claude Code 可用 Hooks 自动触发；ZCode 通过 `scripts/register_zcode_hooks.py` 把 guard 注册进 `~/.zcode/cli/config.json` 后自动触发；OpenCode 与 Codex 按 `references/runtime-adapter.md` 显式运行同一 guard 命令。
+本文档把 guard 审计与评估机制落到 `paper-master-4ss` 项目。目标是把高风险质量规则沉淀为机制层约束，而不是依赖顾问口头提醒。Claude Code 可用 Hooks 自动触发；Antigravity 可在项目根目录配置 `.agents/hooks.json` 自动触发；ZCode 通过 `scripts/register_zcode_hooks.py` 把 guard 注册进 `~/.zcode/cli/config.json` 后自动触发；OpenCode、Codex 与 OMP 按 `references/runtime-adapter.md` 显式运行同一 guard 命令。
 
 ## 1. 双层 Guard 方案
 
 - Skill 层保存可复用脚本和 Claude Code 默认 Hook 配置，随 `paper-master-4ss` 版本管理。
 - Claude Code 项目层可在用户论文项目根目录的 `.claude/settings.json` 启用 Hook，命令指向本 skill 的 `scripts/paper_master_guard.py`。
+- Antigravity 项目层可在项目根目录配置 `.agents/hooks.json` 启用 Hook，命令指向本 skill 的 `scripts/paper_master_guard.py`。
 - ZCode 层由 `scripts/register_zcode_hooks.py` 把 PostToolUse(Bash) 与 Stop hooks 写入 `~/.zcode/cli/config.json` 并开启 `hooks.enabled`；首次注册的当次会话仍显式运行本文件第 5 节命令，后续会话自动触发。
-- OpenCode 与 Codex 不要求创建 `.claude/settings.json`；若宿主没有自动 Hook，执行分析命令后和交付前显式运行本文件第 5 节命令。
-- 项目层自动配置优先用于真实生效；手动命令用于 OpenCode/Codex、迁移和自包含说明。
+- OpenCode、Codex 与 OMP 不要求创建 `.claude/settings.json`；若宿主没有自动 Hook，执行分析命令后和交付前显式运行本文件第 5 节命令。
+- 项目层自动配置优先用于真实生效；手动命令用于 OpenCode/Codex/OMP、迁移和自包含说明。
 
 ## 2. Claude Code 项目级 `.claude/settings.json` 模板
 
@@ -57,6 +58,38 @@ python3 scripts/register_zcode_hooks.py --remove   # 撤销注册
 
 注册器把 `PostToolUse`（matcher `^Bash$`，正则、区分大小写）与 `Stop` 两个 command hook 写入用户配置，命令指向本包绝对路径的 `paper_master_guard.py`，只追加不覆盖，保留其他配置键。guard 命令的 stdout 经 `>/dev/null` 丢弃——ZCode 按 strict-schema JSON 解析 hook stdout，纯文本会标记为 failed；退出码与 stderr 保持有效：post-bash 通过为 0，stop-check 阻断为 2。guard 在没有 `paper-workspace/` 的目录静默退出，注册对其他项目无副作用。注册当次会话仍按第 5 节显式运行；配置从下一次会话起自动触发。
 
+## 3.2 Antigravity 项目级 `.agents/hooks.json` 模板
+
+把 `<PAPER_MASTER_4SS_ROOT>` 替换为本 skill 目录绝对路径，例如 `/Users/yjy/.skills-manager/skills/paper-master-4ss`。
+
+在项目根目录创建 `.agents/hooks.json`：
+
+```json
+{
+  "paper-master-guard": {
+    "PostToolUse": [
+      {
+        "matcher": "run_command",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "python3 <PAPER_MASTER_4SS_ROOT>/scripts/paper_master_guard.py post-bash --workspace paper-workspace"
+          }
+        ]
+      }
+    ],
+    "Stop": [
+      {
+        "type": "command",
+        "command": "python3 <PAPER_MASTER_4SS_ROOT>/scripts/paper_master_guard.py stop-check --workspace paper-workspace"
+      }
+    ]
+  }
+}
+```
+
+Antigravity 在每次执行 `run_command` 分析或绘图脚本后自动运行 `post-bash` 审计，并在会话停止（Stop）前自动验证项目与交接索引是否随最新产物同步。若未配置该文件，则在分析命令后显式运行第 5 节手动命令。
+
 ## 4. Guard 职责边界
 
 ### `guard_after_command` / Claude Code `PostToolUse(Bash)`
@@ -73,7 +106,7 @@ python3 scripts/register_zcode_hooks.py --remove   # 撤销注册
 - 检查 run-log 登记的输出文件是否存在。
 - 写入 `paper-workspace/_logs/hook-audit/analysis-log-audit-[date].md`。
 
-`guard_after_command` 不能撤销已经执行的命令；它只负责把错误和证据缺口回灌给 agent。Claude Code 可由 `PostToolUse(Bash)` 自动触发；ZCode 注册后自动触发（注册当次会话显式运行）；OpenCode/Codex 必须显式运行 `paper_master_guard.py post-bash`。分析报告必须读取该审计文件，不能把失败或未验证脚本写成统计结论。
+`guard_after_command` 不能撤销已经执行的命令；它只负责把错误和证据缺口回灌给 agent。Claude Code 可由 `PostToolUse(Bash)` 自动触发；Antigravity 可由 `.agents/hooks.json` 自动触发；ZCode 注册后自动触发（注册当次会话显式运行）；OpenCode/Codex/OMP 必须显式运行 `paper_master_guard.py post-bash`。分析报告必须读取该审计文件，不能把失败或未验证脚本写成统计结论。
 
 ### `guard_before_finish` / Claude Code `Stop`
 
@@ -87,7 +120,7 @@ python3 scripts/register_zcode_hooks.py --remove   # 撤销注册
 - 若没有模块产物或流程日志，不阻断。
 - 若已有模块产物或流程日志，但 `_index/project-state.md` 或 `_index/handoff-status.md` 缺失/早于最新关键产物，`exit 2` 阻断停止。
 
-`guard_before_finish` 是交付前的机制约束：模块产物写完后必须更新项目状态和交接状态。Claude Code 可由 `Stop` Hook 自动触发；ZCode 注册后自动触发（注册当次会话显式运行）；OpenCode/Codex 必须显式运行 `paper_master_guard.py stop-check`。
+`guard_before_finish` 是交付前的机制约束：模块产物写完后必须更新项目状态和交接状态。Claude Code 可由 `Stop` Hook 自动触发；Antigravity 可由 `.agents/hooks.json` 自动触发；ZCode 注册后自动触发（注册当次会话显式运行）；OpenCode/Codex/OMP 必须显式运行 `paper_master_guard.py stop-check`。
 
 ## 5. 手动命令
 

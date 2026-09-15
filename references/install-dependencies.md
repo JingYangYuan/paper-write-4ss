@@ -210,6 +210,38 @@ test -f paper-master-4ss/modules/update/SKILL.md
 
 ---
 
+---
+
+### 2.9 mechanigraph 模块
+
+**路径**: `paper-master-4ss/modules/mechanigraph/`
+
+**依赖**:
+
+| 依赖 | 用途 | 强制 |
+|------|------|------|
+| Python 3 | 运行生成与渲染脚本 | 是 |
+| Google Chrome / Chromium | 无头渲染 SVG 为真实 PNG 进行视觉自检 | 否（出图自检时推荐；支持 Chrome CLI 或 Selenium） |
+| selenium, webdriver-manager | （可选）Python 驱动 Chrome 无头渲染 | 否（系统有 Chrome 时优先直接调用 Chrome CLI） |
+
+**安装**:
+```bash
+# macOS: 安装 Google Chrome
+brew install --cask google-chrome
+
+# 可选：安装 Selenium 支持
+python3 -m pip install --user selenium webdriver-manager
+```
+
+**验收**:
+```bash
+python3 paper-master-4ss/modules/mechanigraph/scripts/generate_mechanism.py --help
+python3 paper-master-4ss/modules/mechanigraph/scripts/render_svg.py
+```
+
+**无图形/无浏览器环境降级说明**:
+若在纯云端受限容器或无 Chrome 的终端中运行，`generate_mechanism.py` 仍可正常生成符合 CSSCI/SSCI 标准的纯矢量 SVG 产物与元数据。`render_svg.py` 遇到缺少 Chrome 时会打印降级说明，将 SVG 保留在 `paper-workspace/figures/`，用户可直接在本地浏览器或宿主环境中查看，不阻断论文主流程。
+
 ## 三、一键验收脚本
 
 ```bash
@@ -283,6 +315,11 @@ echo "=== update ==="
 test -f paper-master-4ss/modules/update/SKILL.md && echo "update/SKILL.md OK"
 
 echo ""
+
+echo ""
+echo "=== mechanigraph ==="
+python3 paper-master-4ss/modules/mechanigraph/scripts/generate_mechanism.py --help >/dev/null 2>&1 && echo "generate_mechanism OK"
+test -f paper-master-4ss/modules/mechanigraph/SKILL.md && echo "mechanigraph/SKILL.md OK"
 echo "=== DONE ==="
 ```
 

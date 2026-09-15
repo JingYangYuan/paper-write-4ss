@@ -204,7 +204,7 @@ def cmd_post_bash(args: argparse.Namespace) -> int:
 
 def key_artifacts(workspace: Path) -> list[Path]:
     candidates: list[Path] = []
-    for sub in ["01-design", "02-literature", "03-outline", "04-analysis", "05-writing", "06-submission", "07-update"]:
+    for sub in ["01-design", "02-literature", "03-outline", "04-analysis", "05-writing", "06-submission", "07-update", "figures"]:
         root = workspace / sub
         if root.exists():
             candidates.extend(p for p in root.rglob("*") if p.is_file() and p.name != ".DS_Store")

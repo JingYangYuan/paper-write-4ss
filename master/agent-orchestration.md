@@ -30,6 +30,7 @@
 
 - 仅登记输入路径、查看项目状态或摘要已有产物。
 - 单文件格式检查、依赖检查或明确的转换命令。
+- 单张机制图的快速生成/原图复刻可作为轻量任务执行（由主流程或 `svg-designer` 快速完成）；但对于全套宏大理论框架图（如跨宏中微观、三元综合治理或多元对偶系统出图），必须派发 `topology-consultant` 梳理构型与因果实体，再派发 `svg-designer` 执行绘制与自检。
 - 用户明确要求只回答一个事实性问题，且不进入论文流程。
 
 例外不得用于跳过设计、文献、分析、写作或投稿的质量复核；不得用于跳过 agent 的参考库回查。
@@ -83,5 +84,6 @@ Write 模块的 `paper-write-chapter-draft-writer` 是特殊的可重复派发 c
 | 写作润色 | check 的 editorial-screening、argument-integrity、ethics-conformance 做综合复核；通过质量门后才交 submission |
 | 全流程审稿 | check 的 editorial-screening + argument-integrity + ethics-conformance（完整审稿并行，必须等待终态）；实质修改精确回流 write 或前序模块 |
 | 投稿整备 | write 的 `chapter-standard-reviewer` 复核需回流正文的问题；check 已通过后再处理格式与投稿包 |
+| 学术机制图 | design 的 `theory-consultant` 复核因果中介逻辑；analysis 的 `result-reporting` 校准实证变量关系；write 的 `style-consultant` 预判正文插图排版与图题格式 |
 
 跨模块顾问只做预判和风险提示，不替代主模块执行。

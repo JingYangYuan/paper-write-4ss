@@ -1,12 +1,14 @@
 # CLAUDE.md Writing Layer
 
-本文档定义 `paper-master-4ss` 在 Claude Code 中如何创建、插入、更新和读取项目级 `CLAUDE.md`。`CLAUDE.md` 是 `project_memory` 的 Claude Code 落点；ZCode 的落点是工作区 `AGENTS.md` 标记块，套用同一套标记块纪律（下文所有 `CLAUDE.md` 规则对 ZCode 的 `AGENTS.md` 同样适用）；OpenCode 与 Codex 的项目记忆回退见 `references/runtime-adapter.md` 与 `references/agent-software-adapters.md`。
+本文档定义 `paper-master-4ss` 在 Claude Code 中如何创建、插入、更新和读取项目级 `CLAUDE.md`。`CLAUDE.md` 是 `project_memory` 的 Claude Code 落点；Antigravity 的落点优先为项目根目录的 `GEMINI.md` 或工作区 `AGENTS.md` 标记块；ZCode 的落点是工作区 `AGENTS.md` 标记块；OMP 的落点是 `.omp/AGENTS.md` 或工作区 `AGENTS.md` 标记块，套用同一套标记块纪律（下文所有 `CLAUDE.md` 规则对 `GEMINI.md` 与 `AGENTS.md` 同样适用）；OpenCode 与 Codex 的项目记忆回退见 `references/runtime-adapter.md` 与 `references/agent-software-adapters.md`。
 
 ## 1. 落点规则
 
 - `CLAUDE.md` 必须写入用户项目文件夹，不写入 `paper-master-4ss` skill 包目录。
 - 仅当前宿主是 Claude Code，或用户明确要求兼容 Claude Code 时，才默认创建或更新 `CLAUDE.md`。
+- Antigravity 的项目记忆落点优先为项目根目录的 `GEMINI.md` 或工作区 `AGENTS.md` 的 paper-master 标记块；仅当前宿主是 Antigravity 时才创建或更新，避免在 Antigravity 项目中错建 `CLAUDE.md`。
 - ZCode 的项目记忆落点是工作区 `AGENTS.md` 的 paper-master 标记块（ZCode 原生向上搜索并加载 `AGENTS.md`）；仅当前宿主是 ZCode 时才创建或更新，标记块外内容同样不得覆盖。
+- OMP 的项目记忆落点是 `.omp/AGENTS.md` 或工作区 `AGENTS.md` 标记块。
 - OpenCode/Codex 缺少宿主项目规则文件时，写入 `paper-workspace/_index/project-rules.md`，不得默认创建 `CLAUDE.md`。
 - 默认项目文件夹是 `paper-workspace/` 所在目录的父目录。
 - 若用户显式指定项目根目录，则以用户指定路径为准。
@@ -89,10 +91,10 @@ paper-master 标记块应使用以下结构：
 - Teammate 消息限制：每条消息不超过 3 句话；长内容写入文件并发送路径。
 - Update pending 规则：`update` 模块只生成 `pending` 候选更新包，不直接修改核心技能文件。
 - 分析真实性：没有真实数据、脚本执行结果或可核验证据时，不得伪造变量、统计结果、访谈摘录、显著性、引用字段或投稿状态。
-- Guard 审计：分析执行后的命令必须接受 `guard_after_command` 审计；最终停止或交付前必须让 `guard_before_finish` 检查 `project-state.md` 与 `handoff-status.md` 是否随最新产物更新。Claude Code 可由 Hook 自动触发；ZCode 注册 `register_zcode_hooks.py` 后自动触发；OpenCode/Codex 显式运行 guard 命令。
+- Guard 审计：分析执行后的命令必须接受 `guard_after_command` 审计；最终停止或交付前必须让 `guard_before_finish` 检查 `project-state.md` 与 `handoff-status.md` 是否随最新产物更新。Claude Code 可由 Hook 自动触发；Antigravity 可由 `.agents/hooks.json` 自动触发；ZCode 注册 `register_zcode_hooks.py` 后自动触发；OpenCode/Codex/OMP 显式运行 guard 命令。
 - Rubric 评分：每次实质性模块执行后运行 `paper_master_guard.py score-project`，把阶段质量分、全流程成熟度、失败归因和下一步修复写入 `_index/quality-score.md` 与 `_index/quality-score.json`。
 - Agent 文件策略：不复制 `.claude/agents`，只通过导向说明引用 `modules/*/agents/*.md`。
-- `project_memory` 落点：Claude Code 写入用户项目文件夹的 `CLAUDE.md`；ZCode 写入工作区 `AGENTS.md` 标记块；OpenCode/Codex 缺少宿主规则文件时写入 `paper-workspace/_index/project-rules.md`；不得写入 skill 文件夹。
+- `project_memory` 落点：Claude Code 写入用户项目文件夹的 `CLAUDE.md`；Antigravity 写入 `GEMINI.md` 或 `AGENTS.md` 标记块；ZCode 写入工作区 `AGENTS.md` 标记块；OMP 写入 `.omp/AGENTS.md` 或 `AGENTS.md`；OpenCode/Codex 缺少宿主规则文件时写入 `paper-workspace/_index/project-rules.md`；不得写入 skill 文件夹。
 
 ## 7. 用户选择记录
 
@@ -107,6 +109,7 @@ paper-master 标记块应使用以下结构：
 | `write` | 研究方法协议、发表范式、写作风格梯度、引言起笔策略、润色/扫描偏好 |
 | `submission` | 稿件路径、投稿样式、Word 模板、引用体例、是否生成 cover letter 或 response letter |
 | `update` | 更新目的、目标模块、是否 self-update、证据补强要求、风险等级偏好 |
+| `mechanigraph` | 拓扑构型流派、外围大边框样式（实线/虚线/无外框）、分箱与连线风格（实线为主/虚实结合）、是否需要无头 Chrome 视觉复核 |
 | `teamagent` | 是否启用 Team、Team 规模、显示模式、是否 plan approval、是否允许 teammate 直接写文件 |
 
 ## 8. Team 配置状态
