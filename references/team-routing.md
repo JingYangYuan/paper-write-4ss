@@ -1,6 +1,6 @@
 # Team Routing Protocol
 
-本文档定义 `paper-master-4ss` 在 Claude Code Agent Teams 中的显式触发、用户确认、focal canonical agent 选择、同一 subagent 多席位化和辩论式 teammate 路由规则。Agent Teams/teammate 是 Claude Code 专属高级并行形态；ZCode 调用本 skill 时按 `references/agent-software-adapters.md` 回退为 Agent 工具并行 subagent 派发，OpenCode/Codex 回退到普通顾问派发或 `sequential-review`。
+本文档定义 `paper-master-4ss` 在 Claude Code Agent Teams 中的显式触发、用户确认、focal canonical agent 选择、同一 subagent 多席位化和辩论式 teammate 路由规则。Agent Teams/teammate 是 Claude Code 专属高级并行形态，属于**可选兼容层**，不是本包的前置依赖：只有能力探测判定当前宿主提供 Agent Teams（或等价的多席位辩论运行时）时才可按本文档执行；否则一律按 `references/runtime-adapter.md` 与 `references/agent-software-adapters.md` 回退为 `spawn_agent`/`parallel_review` 并行 subagent 派发、普通顾问派发或 `sequential-review`。
 
 ## 1. 触发边界
 
@@ -14,7 +14,7 @@
 - `升格子智能体`
 - 明确要求使用 Claude Code Team/Teams
 
-普通的“全流程规划”“完整检查”“继续推进”“多智能体复核”仍按 `master/agent-orchestration.md` 处理，不自动创建 Agent Team。当前宿主不是 Claude Code 时，即使用户使用了 Team 相关词，也必须说明该高级形态不可用，并回退到普通 orchestration。
+普通的“全流程规划”“完整检查”“继续推进”“多智能体复核”仍按 `master/agent-orchestration.md` 处理，不自动创建 Agent Team。当前宿主的探测结果不提供 Agent Teams 时，即使用户使用了 Team 相关词，也必须说明该高级形态不可用，并回退到普通 orchestration。
 
 Team 与普通 subagent 派发的边界必须保持清楚：普通 orchestration 是多 canonical agent 顾问派发；显式 Agent Team 是同一 canonical agent 的多视角辩论。Team 不得把多个不同 subagent 直接拼成团队，否则退化为普通顾问矩阵。
 
@@ -22,10 +22,10 @@ Team 与普通 subagent 派发的边界必须保持清楚：普通 orchestration
 
 显式 Team 请求的加载顺序：
 
-1. 项目级 `CLAUDE.md`（位于用户项目文件夹，不在 skill 包内）。
+1. 项目级 `project_memory` 规则文件（位于用户项目文件夹，不在 skill 包内；维护纪律见 `references/project-rules-writing-layer.md`）。
 2. `references/runtime-adapter.md` 与 `references/agent-software-adapters.md`。
 3. `SKILL.md`。
-4. `references/claude-team-config.md`。
+4. `references/multiagent-team-config.md`。
 5. `references/team-routing.md`。
 6. `master/agent-orchestration.md`。
 7. `master/output-protocol.md`。
@@ -45,7 +45,7 @@ Team 与普通 subagent 派发的边界必须保持清楚：普通 orchestration
 | Plan approval | 启用；不启用 | 涉及写文件、脚本执行、投稿导出、update 时启用 |
 | Teammate 写文件权限 | 不允许写文件；只允许写日志目录；允许写模块正式输出目录 | 只允许写各自独占的 `paper-workspace/_logs/agents/team-[date]/teammate-[canonical-agent]-[perspective].md` |
 
-结构化提问示例见 `references/ask-user-question-examples.md`。Team 选择门槛可按以下 `ask_user` 示例分组确认：
+结构化提问示例见 `references/user-question-examples.md`。Team 选择门槛可按以下 `ask_user` 示例分组确认：
 
 ```text
 question: "是否启用 Agent Team？Team 会把同一 canonical agent 升格为多席位辩论，提示成本较高但复核更强。"
@@ -66,7 +66,7 @@ options: [
 ]
 ```
 
-Team 规模表示同一 subagent 的辩论席位数量，不表示不同 subagent 数量。确认结果必须写入项目级 `CLAUDE.md` 的 paper-master 标记块。后续 Team 执行默认沿用这些选择；只有用户明确改选时才更新。
+Team 规模表示同一 subagent 的辩论席位数量，不表示不同 subagent 数量。确认结果必须写入 `project_memory`：优先当前宿主已有的项目规则文件的 paper-master 标记块，没有宿主规则文件时写入 `paper-workspace/_index/project-rules.md`。后续 Team 执行默认沿用这些选择；只有用户明确改选时才更新。
 
 即使用户允许 teammate 写日志目录，teammate 也只能写自己的独占报告文件；`team-brief.md`、`team-synthesis-[YYYY-MM-DD].md`、索引文件和任何共享文件都必须由 Lead 串行创建或整合，不得让多个 teammate 同时写入。
 
@@ -74,11 +74,11 @@ Team 规模表示同一 subagent 的辩论席位数量，不表示不同 subagen
 
 若当前宿主不是 Claude Code、Agent Teams 未启用、Claude Code 版本不支持、终端模式不可用或用户选择不启用 team：
 
-1. 读取 `references/claude-team-config.md`。
+1. 读取 `references/multiagent-team-config.md`。
 2. 用简短中文说明可选配置方式。
 3. 不修改用户的 shell 配置或 `~/.claude.json`。
 4. 回退到 `master/agent-orchestration.md` 的普通 subagent/顺序复核。
-5. 在 `project_memory` 与过程日志中记录回退原因；Claude Code 可写入项目级 `CLAUDE.md`，ZCode 写入工作区 `AGENTS.md` 标记块，OpenCode/Codex 缺少宿主规则文件时写入 `paper-workspace/_index/project-rules.md`。
+5. 在 `project_memory` 与过程日志中记录回退原因：优先写入当前宿主已有的项目规则文件标记块，没有宿主规则文件时写入 `paper-workspace/_index/project-rules.md`。
 
 ## 5. Subagent 升格为 Teammate
 
@@ -108,7 +108,7 @@ teammate 的创建说明必须包含：
 详细报告写入指定路径，给 Lead 的消息不超过 3 句话，只返回结论摘要和文件路径。
 ```
 
-作为 teammate 运行时，`model` 和 `tools` 不由 agent frontmatter 决定；实际模型和工具权限由 Claude Code Team 创建时的 Lead 环境决定。
+作为 teammate 运行时，模型与工具权限都不由 agent frontmatter 决定（本包 frontmatter 已不声明 `model`/`tools`）。实际模型和工具权限由当前宿主的 Team/subagent 运行时决定；无论运行时提供什么工具，业务语义仍按 `references/runtime-adapter.md` 的通用能力名映射，并把映射结果与缺失清单记录到 `team-brief.md` 与 `team-synthesis`。
 
 ## 6. Focal Agent 路由矩阵
 
@@ -144,7 +144,7 @@ teammate 的创建说明必须包含：
 - 涉及投稿导出、引用整理或 Word 模板处理。
 - 涉及 `update` 模块、候选协议或核心技能文件。
 
-启用 plan approval 后，teammate 先提交计划，Lead 审核通过后才能执行。若用户明确选择不启用，应把该选择写入项目级 `CLAUDE.md`，并在最终回复中标注风险。
+启用 plan approval 后，teammate 先提交计划，Lead 审核通过后才能执行。若用户明确选择不启用，应把该选择写入 `project_memory`，并在最终回复中标注风险。
 
 ## 9. 输出落盘
 

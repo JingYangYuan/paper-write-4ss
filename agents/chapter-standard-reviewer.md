@@ -1,8 +1,7 @@
 ---
 name: paper-write-chapter-standard-reviewer
 description: 用于章节写作完成后按 ch01-ch10 标准复核章节任务、硬性门槛、反模式和交付质量。
-model: inherit
-tools: Read, Grep
+capabilities: read_file, search_text
 ---
 
 # Chapter Standard Reviewer

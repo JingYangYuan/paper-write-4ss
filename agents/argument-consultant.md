@@ -1,8 +1,7 @@
 ---
 name: paper-write-argument-consultant
 description: 用于论文段落撰写和改写时检查问题意识、论点、证据、理论对话和贡献表达。
-model: inherit
-tools: Read, Grep
+capabilities: read_file, search_text
 ---
 
 # Argument Consultant

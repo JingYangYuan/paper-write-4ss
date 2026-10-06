@@ -1,17 +1,13 @@
 ---
 name: paper-write-4ss
 description: "中文社会科学论文写作系统。先通过 research_router.md 完成研究方法协议与发表范式双层路由，再按章节标准和范文提示词完成写作、润色和检查。支持规范研究、实证研究、阐释研究、混合研究四类方法协议，以及社会学研究范式和管理世界案例研究范式两类发表风格。配备 writing_scanner.py 与 complexity_analyzer.py，用于语言反模式扫描和文本复杂度诊断。"
-allowed-tools:
-  - Read
-  - Write
-  - Edit
-  - Bash
-  - Grep
-  - Agent
-argument-hint: "[文本路径] 后加 [路由/润色/扫描/检查/改写/复杂度]"
+capabilities: read_file, write_file, run_shell, search_text, spawn_agent
+args_hint: "[文本路径] 后加 [路由/润色/扫描/检查/改写/复杂度]"
 ---
 
 > **拆分版路径约定**：本包由 `paper-master-4ss/scripts/export_standalone.py` 从 `paper-master-4ss/modules/write/` 自动导出，是可独立安装的运行版。包内相对路径（`agents/`、`phases/`、`references/`、`master/` 等）相对本包根目录解析；跨模块路径 `paper-master-4ss/modules/<x>/...` 相对同级安装的 `paper-master-4ss/` 总控包解析。请勿直接编辑本包：修改总控模块后重新导出。
+>
+> **宿主无关约定**：本包不预设宿主，也不在 frontmatter 声明 `tools`/`hooks`/`model` 等宿主专属键。启动时按 `references/runtime-adapter.md` §5 探测当前环境可用能力，再按通用能力名（`read_file`、`search_text`、`web_search`、`run_shell`、`spawn_agent` 等）执行；宿主样例见 `references/agent-software-adapters.md`（样例，非名单）。
 
 # write module-exp：中文社会科学论文写作系统
 
@@ -156,7 +152,7 @@ Skill 加载后，应使用 ask_user 向用户提问。除非用户已经明确�
 
 ### ask_user 提问顺序
 
-结构化示例模块统一遵守 `references/ask-user-question-examples.md`。本节为总入口提问清单；更完整的分层示例见 `resources/research_router.md` 与 `resources/writing_style_subrouter.md`。
+结构化示例模块统一遵守 `references/user-question-examples.md`。本节为总入口提问清单；更完整的分层示例见 `resources/research_router.md` 与 `resources/writing_style_subrouter.md`。
 
 第一层，研究方法协议判断。
 

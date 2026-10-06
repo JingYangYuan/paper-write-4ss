@@ -1,9 +1,11 @@
 #!/usr/bin/env python3
 """Mechanical guards for paper-master-4ss projects.
 
-The script is intentionally standard-library only. It can be called from
-Claude Code hooks, OpenCode/Codex explicit guard calls, or manual runs
-inside any project that contains a paper-workspace directory.
+The script is intentionally standard-library only and host-agnostic: it can be
+wired into any host hook interface (see scripts/register_host_hooks.py), called
+explicitly by a host without hook support, or run by hand inside any project
+that contains a paper-workspace directory. It reads whatever JSON the host
+feeds on stdin and never assumes a specific hook payload schema.
 """
 
 from __future__ import annotations
@@ -197,6 +199,8 @@ def cmd_post_bash(args: argparse.Namespace) -> int:
         print(f"paper-master-4ss analysis audit found issues. See {report}", file=sys.stderr)
         for issue in issues:
             print(f"- {issue}", file=sys.stderr)
+        if getattr(args, "strict", False):
+            return 2
     else:
         print(f"paper-master-4ss analysis audit passed. See {report}")
     return 0
@@ -654,6 +658,12 @@ def build_parser() -> argparse.ArgumentParser:
     for name in ("post-bash", "stop-check", "score-project"):
         p = sub.add_parser(name)
         p.add_argument("--workspace", default="paper-workspace")
+        if name == "post-bash":
+            p.add_argument(
+                "--strict",
+                action="store_true",
+                help="审计发现问题时以退出码 2 阻断；默认只写 stderr 与审计报告并返回 0",
+            )
         if name == "score-project":
             p.add_argument("--json", action="store_true")
     return parser

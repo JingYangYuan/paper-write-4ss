@@ -1,8 +1,12 @@
-# Agent Software Adapters
+# Agent Software Adapters（已知宿主样例 + 适配层契约）
 
-本文档覆盖六类宿主：Claude Code、OpenCode、Codex、ZCode、OMP（Oh My Pi / Pi coding agent）、Antigravity（`agy` / Google Antigravity）。业务流程先按 `references/runtime-adapter.md` 使用通用能力名，再按下表映射到当前宿主。
+本文件给出若干**已知宿主样例**的能力映射，作为探测与映射的参考素材，**不是宿主名单**，也不构成任何硬依赖：任何宿主都按 `references/runtime-adapter.md` 的通用能力名执行，并在会话开始时按该文件 §5 的探测程序确定实际可用能力。样例之外的新宿主一律走通用回退，不需要修改本包。
 
-## 1. 能力映射
+业务流程先用通用能力名书写（`read_file`、`search_text`、`write_file`、`run_shell`、`web_search`、`web_fetch`、`browser_control`、`ask_user`、`spawn_agent`、`parallel_review`、`guard_after_command`、`guard_before_finish`、`project_memory`），再映射到当前宿主实际工具；映射结果与缺失清单写入 `paper-workspace/_index/runtime-capabilities.md`。
+
+## 1. 样例能力映射
+
+下表仅为**常见宿主的参考样例**（含 Claude Code 兼容层，见 §9）；缺行、缺列都不代表该宿主不受支持。
 
 | 通用能力 | Claude Code | OpenCode | Codex | ZCode | OMP | Antigravity (agy) |
 |---|---|---|---|---|---|---|
@@ -16,20 +20,19 @@
 | `ask_user` | AskUserQuestion 或直接提问 | 宿主提问能力或直接提问 | request_user_input 或直接提问 | AskUserQuestion 或直接提问 | `ask` 工具或直接提问 | `ask_question` 或直接自然语言确认 |
 | `spawn_agent` | Task/subagent | OpenCode agent/subtask 能力；无则顺序复核 | Codex multi-agent/subagent 能力；无则顺序复核 | Agent 工具派发 subagent | `task` 工具派发 subagent | `invoke_subagent` |
 | `parallel_review` | 多 Task 或 Agent Teams | 并行 subtask；无则 `sequential-review` | 并行 subagent；无则 `sequential-review` | 多 Agent 并行派发；无则 `sequential-review` | 单批 `tasks[]` 并行派发；无则 `sequential-review` | `manage_subagents` / 多 subagent 派发；无则 `sequential-review` |
-| `guard_after_command` | `PostToolUse(Bash)` Hook | 显式运行 guard 命令 | 显式运行 guard 命令 | 注册后 config hook 自动触发；未注册或注册当次会话显式运行 | 显式运行 guard 命令（可用 `.omp/hooks/` 的 `tool_result` 扩展实现自动触发） | `.agents/hooks.json` 的 `PostToolUse` (matcher: `run_command`)；或显式运行 guard 命令 |
-| `guard_before_finish` | `Stop` Hook | 显式运行 guard 命令 | 显式运行 guard 命令 | 注册后 config hook 自动触发；未注册或注册当次会话显式运行 | 显式运行 guard 命令 | `.agents/hooks.json` 的 `Stop`；或显式运行 guard 命令 |
-| `project_memory` | `CLAUDE.md` 标记块 | OpenCode 项目规则文件；无则 `project-rules.md` | Codex/AGENTS 项目规则文件；无则 `project-rules.md` | 工作区 `AGENTS.md` 标记块；无则 `project-rules.md` | `.omp/AGENTS.md`（原生）或工作区 `AGENTS.md` 标记块；无则 `project-rules.md` | `GEMINI.md` 或工作区 `AGENTS.md` 标记块；无则 `project-rules.md` |
+| `guard_after_command` | hook（见 §9）或显式运行 guard 命令 | 显式运行 guard 命令 | 显式运行 guard 命令 | 注册后 config hook 自动触发；未注册或注册当次会话显式运行 | 显式运行 guard 命令（可用 `.omp/hooks/` 的 `tool_result` 扩展实现自动触发） | `.agents/hooks.json` 的 `PostToolUse` (matcher: `run_command`)；或显式运行 guard 命令 |
+| `guard_before_finish` | hook（见 §9）或显式运行 guard 命令 | 显式运行 guard 命令 | 显式运行 guard 命令 | 注册后 config hook 自动触发；未注册或注册当次会话显式运行 | 显式运行 guard 命令 | `.agents/hooks.json` 的 `Stop`；或显式运行 guard 命令 |
+| `project_memory` | 项目规则文件（见 §9） | OpenCode 项目规则文件；无则 `project-rules.md` | Codex/AGENTS 项目规则文件；无则 `project-rules.md` | 工作区 `AGENTS.md` 标记块；无则 `project-rules.md` | `.omp/AGENTS.md`（原生）或工作区 `AGENTS.md` 标记块；无则 `project-rules.md` | `GEMINI.md` 或工作区 `AGENTS.md` 标记块；无则 `project-rules.md` |
 
-## 2. Claude Code
+## 2. Claude Code（样例）
 
-- Claude Code 是原生宿主，保留 skill frontmatter hooks、项目级 `.claude/settings.json`、`CLAUDE.md` 和 Agent Teams 说明。
-- `PostToolUse(Bash)` 实现 `guard_after_command`；`Stop` 实现 `guard_before_finish`。
-- `CLAUDE.md` 是 `project_memory` 的 Claude Code 落点；维护方式见 `references/claude-md-writing-layer.md`。
-- Agent Teams/teammate 是 Claude Code 专属高级并行形态。只有用户显式触发 Team 时，才读取 `references/claude-team-config.md` 与 `references/team-routing.md`。
+- Claude Code 是**兼容层样例**：本包不为它写宿主专属 frontmatter，也不要求在 skill frontmatter 里声明 hooks；hook 由包外适配层或用户项目配置提供（见 §9）。
+- `PostToolUse(Bash)` 可作为 `guard_after_command` 的实现；`Stop` 可作为 `guard_before_finish` 的实现。
+- 项目规则文件的落点与维护方式见 `references/project-rules-writing-layer.md`。
+- Agent Teams/teammate 是 Claude Code 专属高级并行形态。只有用户显式触发 Team 时，才读取 `references/multiagent-team-config.md` 与 `references/team-routing.md`。
 
-## 3. OpenCode
+## 3. OpenCode（样例）
 
-- OpenCode 调用本 skill 时，必须先读取 `references/runtime-adapter.md` 与本文件，再按能力表执行。
 - 无自动 Hook 时，在分析命令后显式运行：
   `python3 scripts/paper_master_guard.py post-bash --workspace paper-workspace`。
 - 交付前显式运行：
@@ -37,9 +40,9 @@
 - 若 OpenCode 没有可用 subagent 或并行任务能力，按派发清单顺序完成顾问复核，并在 `agent-brief.md` 与 `agent-synthesis` 记录 `sequential-review`。
 - 若没有宿主项目规则文件，长期选择写入 `paper-workspace/_index/project-rules.md`，不要创建 `CLAUDE.md` 作为 OpenCode 的默认规则文件。
 
-## 4. Codex
+## 4. Codex（样例）
 
-- Codex 调用本 skill 时，必须按 `references/runtime-adapter.md` 映射本地文件读取、`rg`、shell、web、用户确认和可用的 subagent 能力。
+- Codex 按 `references/runtime-adapter.md` 映射本地文件读取、`rg`、shell、web、用户确认和可用的 subagent 能力。
 - 无自动 Hook 时，在分析命令后显式运行：
   `python3 scripts/paper_master_guard.py post-bash --workspace paper-workspace`。
 - 交付前显式运行：
@@ -47,19 +50,18 @@
 - 若没有可用多 agent 能力，按同一 canonical agent 清单顺序复核，并记录 `sequential-review`。
 - 若没有 Codex 项目规则文件，长期选择写入 `paper-workspace/_index/project-rules.md`，不要创建 `CLAUDE.md` 作为 Codex 的默认规则文件。
 
-## 5. ZCode
+## 5. ZCode（样例）
 
-- ZCode 调用本 skill 时，必须先读取 `references/runtime-adapter.md` 与本文件，再按能力表执行。
-- ZCode 不执行 skill frontmatter hooks：首次调用先运行 `python3 scripts/register_zcode_hooks.py`（幂等，写前备份；详见 `references/hooks-and-evaluation.md` 第 3 节），把 guard hooks 注册进 `~/.zcode/cli/config.json` 并开启 `hooks.enabled`；注册当次会话仍显式运行：
+- ZCode 不读取 skill frontmatter hooks：需要自动 guard 时运行
+  `python3 scripts/register_host_hooks.py --host zcode`（幂等，写前备份；旧脚本 `scripts/register_zcode_hooks.py` 为等价 shim），把 guard hooks 注册进 `~/.zcode/cli/config.json` 并开启 `hooks.enabled`；注册当次会话仍显式运行：
   `python3 scripts/paper_master_guard.py post-bash --workspace paper-workspace` 与
   `python3 scripts/paper_master_guard.py stop-check --workspace paper-workspace`，后续会话由 config hooks 自动触发。
 - 派发顾问用 Agent 工具（subagent），可在单条消息里并行派发多个实现 `parallel_review`；不可并行时记录 `sequential-review`。Agent Teams/teammate 是 Claude Code 专属形态，ZCode 不创建 Team，等价回退为并行 subagent 派发。
 - 结构化提问用 AskUserQuestion；网页检索用 WebSearch/WebFetch 或已接入的 exa/web_reader MCP；Zotero 操作用已接入的 zotero MCP；桌面操纵用已接入的 computer-use MCP。
-- 长期选择写入工作区 `AGENTS.md` 的 paper-master 标记块（维护纪律见 `references/claude-md-writing-layer.md`）；不要为 ZCode 默认创建 `CLAUDE.md`。
+- 长期选择写入工作区 `AGENTS.md` 的 paper-master 标记块（维护纪律见 `references/project-rules-writing-layer.md`）；不要为 ZCode 默认创建 `CLAUDE.md`。
 
-## 6. OMP（Oh My Pi / Pi coding agent）
+## 6. OMP（Oh My Pi / Pi coding agent，样例）
 
-- OMP 调用本 skill 时，必须先读取 `references/runtime-adapter.md` 与本文件，再按能力表执行。
 - 文件与搜索用 `read` / `grep` / `glob`；命令用 `bash`；网页检索用 `web_search` 或已接入的 exa MCP，`read` 可直接读 URL 正文。
 - 顾问派发用 `task` 工具，单批 `tasks[]` 即 `parallel_review`；只读调研用 `scout`，不可并行时记录 `sequential-review`。OMP 无 Agent Teams 形态，显式 Team 请求回退为普通顾问派发。
 - 结构化提问用 `ask` 工具；Zotero 操作用已接入的 zotero MCP。
@@ -67,21 +69,49 @@
 - OMP 不自动触发 paper-master guard：执行分析命令后显式运行 `python3 scripts/paper_master_guard.py post-bash --workspace paper-workspace`，交付前显式运行 `stop-check`。如需自动触发，可在 `.omp/hooks/` 用 `tool_result` 事件扩展实现（见 OMP hooks 文档）。
 - 长期选择写入 `.omp/AGENTS.md`（OMP 原生项目上下文）的 paper-master 标记块，或工作区 `AGENTS.md`；不要为 OMP 默认创建 `CLAUDE.md`。
 
-## 7. Antigravity（agy / Google Antigravity）
+## 7. Antigravity（agy / Google Antigravity，样例）
 
-- Antigravity 调用本 skill 时，必须先读取 `references/runtime-adapter.md` 与本文件，再按能力表执行。
 - **宿主形态**：Antigravity 具备 CLI（`agy`）与桌面 IDE/GUI 双形态。CLI 模式下执行分析与渲染脚本时，可配置 `--dangerously-skip-permissions` 获得平滑自动化执行体验。
 - **工具映射**：文件读取使用 `view_file`，文件写入使用 `write_to_file` / `replace_file_content`，检索使用 `grep_search` 与 `find_by_name`，网络搜索与读取使用 `search_web` 与 `read_url_content`，结构化交互使用 `ask_question` 或自然语言直接确认。
-- **Hook 机制**：Antigravity 原生支持项目根目录下的 `.agents/hooks.json` 自动化钩子：
+- **Hook 机制**：Antigravity 原生支持项目根目录下的 `.agents/hooks.json` 自动化钩子，可运行 `python3 scripts/register_host_hooks.py --host antigravity` 生成：
   - `PostToolUse`（matcher: `run_command`）触发 `python3 scripts/paper_master_guard.py post-bash --workspace paper-workspace`；
   - `Stop` 钩子在会话结束前触发 `python3 scripts/paper_master_guard.py stop-check --workspace paper-workspace`；
-  - 若当前环境未挂载 `.agents/hooks.json`，则在分析命令后显式运行 `post-bash`，模块交付前显式运行 `stop-check`（详见 `references/hooks-and-evaluation.md` 第 3.2 节）。
+  - 若当前环境未挂载 `.agents/hooks.json`，则在分析命令后显式运行 `post-bash`，模块交付前显式运行 `stop-check`（详见 `references/hooks-and-evaluation.md`）。
 - **多智能体调度**：支持 `invoke_subagent` 与 `manage_subagents`。在研究设计、审稿检查或复杂大纲复核时，可并发派发多个 canonical agent 实现 `parallel_review`；若宿主并发受限，则按角色清单在当前会话顺序复核并记录 `sequential-review`。
 - **机制图矢量自检（Mechanigraph）**：Antigravity 运行机制图生成时，调用 `paper-master-4ss/modules/mechanigraph/scripts/render_svg.py` 驱动系统 Chrome 或无头模式渲染真实 PNG。若在纯云端/容器无图形环境中缺失 Chrome，脚本会安全降级并输出纯矢量 SVG 源码与元数据 JSON，提示在宿主中查看，不阻断主流程。
-- **长期记忆**：长期项目规则落点优先为项目根目录的 `GEMINI.md` 或工作区 `AGENTS.md` 中的 `<!-- paper-master-4ss:start -->` 标记块（格式遵循 `references/claude-md-writing-layer.md`）；不要在 Antigravity 环境下错建 `CLAUDE.md`；无宿主记忆文件时写入 `paper-workspace/_index/project-rules.md`。
+- **长期记忆**：长期项目规则落点优先为项目根目录的 `GEMINI.md` 或工作区 `AGENTS.md` 中的 `<!-- paper-master-4ss:start -->` 标记块（格式遵循 `references/project-rules-writing-layer.md`）；不要为 Antigravity 错建 `CLAUDE.md`；无宿主记忆文件时写入 `paper-workspace/_index/project-rules.md`。
 
-## 8. 共同回退规则
+## 8. 适配层契约（对所有宿主生效）
 
-- 各宿主都不得因为缺少某项能力而伪造结果；只能记录能力缺失、用户暂缓、网络不可达或顺序复核。
-- CNKI、Google Scholar、Zotero MCP、浏览器操纵和网页摘要抓取必须由实际可用工具完成；普通搜索或顾问意见不能替代 CNKI 完成状态。
-- 各宿主都必须保持 `paper-workspace/` 输出结构、agent canonical name、质量评分文件和 guard 命令不变。
+1. **不得伪造缺失能力**：缺少任何能力时只记录缺失、用户暂缓、网络不可达或顺序复核，不得声称已用某工具完成。
+2. **本包不声明宿主专属 frontmatter**：skill/agent 的 frontmatter 只使用宿主无关键（`name`、`description`、可选 `capabilities`、`invocable`、`args_hint`），不含 `tools`/`allowed-tools`/`hooks`/`model`/`user-invocable`/`argument-hint`。
+3. **场景词与工具名只作探测线索**：正文出现的宿主工具名（含 §9 兼容层）只用于识别当前环境，实际执行必须经通用能力名映射。
+4. **不把本包当成 Claude Code plugin**：不依赖 `${CLAUDE_PLUGIN_ROOT}`、不假设 frontmatter hooks 生效、不为本包写 `.claude/settings.json`。
+5. **除 §9 兼容表外，包内文档不得以宿主工具名作正式说法**；宿主名只能出现在样例小节中，且必须注明「样例、非名单」。
+6. **包外适配层可覆盖**：宿主可用自己的 preset/插件/规则文件提供更精确的映射与自动 guard，本包只要求能力语义与产物结构一致。
+7. **产物结构稳定**：任何宿主都必须保持 `paper-workspace/` 输出结构、canonical agent 名、质量评分文件（`_index/quality-score.md|.json`）与 guard 命令不变。
+
+## 9. Claude Code 兼容叠加（可选）
+
+仅在当前宿主的探测结果判定为 Claude Code（或其兼容运行时）时使用本节。它不改变通用能力语义，只是同一能力的宿主专名与补偿写法。
+
+| 通用能力 | Claude Code 工具名 |
+|---|---|
+| `read_file` | `Read` |
+| `search_text` | `Grep` / `Glob` |
+| `write_file` | `Write` / `Edit` |
+| `run_shell` | `Bash` |
+| `web_search` | `WebSearch` |
+| `web_fetch` | `WebFetch` |
+| `ask_user` | `AskUserQuestion` |
+| `spawn_agent` | `Task`（subagent） |
+| `parallel_review` | 多 `Task` 并行；Agent Teams 仅在用户显式触发时（见 `references/team-routing.md`） |
+| `guard_after_command` | `PostToolUse`（matcher 匹配 `Bash`）运行 `paper_master_guard.py post-bash` |
+| `guard_before_finish` | `Stop` 运行 `paper_master_guard.py stop-check` |
+| `project_memory` | `CLAUDE.md` 的 `<!-- paper-master-4ss:start -->` 标记块 |
+
+三条补偿配方：
+
+1. **路径**：命令里不要依赖 `${CLAUDE_PLUGIN_ROOT}`；用本包内的显式相对路径（`scripts/paper_master_guard.py`），或让包外适配层注入根路径变量。
+2. **Hook**：不要求 skill frontmatter 的 `hooks:` 生效（本包已移除该键）。需要自动 guard 时，运行 `python3 scripts/register_host_hooks.py --host claude-code`（写入项目级 `.claude/settings.json`），或由用户/包外适配层自行配置；无论是否注册，分析命令后与交付前仍应显式运行两条 guard 命令兜底。
+3. **Project memory**：`CLAUDE.md` 只是 Claude Code 的落点之一；若当前工作区使用其他规则文件，优先该文件，无宿主规则文件时退回 `paper-workspace/_index/project-rules.md`。

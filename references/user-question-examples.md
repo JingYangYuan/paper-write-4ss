@@ -1,6 +1,6 @@
 # ask_user 示例模块规范
 
-本文档定义 `paper-master-4ss` 内所有用户提问、确认和阻断门槛的示例写法。`ask_user` 是各宿主通用能力名；Claude Code 与 ZCode 可映射为 AskUserQuestion，OMP 映射为 `ask` 工具，Antigravity 映射为 `ask_question` 工具或直接交互，Codex 映射为 `request_user_input`，OpenCode 映射为各自的提问能力或直接提问。各模块可以保留局部业务选项，但字段结构应统一为 `question`、`header`、`options`。
+本文档定义 `paper-master-4ss` 内所有用户提问、确认和阻断门槛的示例写法。`ask_user` 是宿主无关通用能力名，实际工具按 `references/runtime-adapter.md` §5 探测结果映射（已知宿主样例见 `references/agent-software-adapters.md` §1：Claude Code 兼容层为 `AskUserQuestion`，其他宿主用各自的提问工具；`ask_user` 不可用时改为单轮自然语言提问并记录 `ask_user=能力缺失`）。各模块可以保留局部业务选项，但字段结构应统一为 `question`、`header`、`options`。
 
 ## 一、标准字段
 
@@ -64,7 +64,7 @@ options: [
 
 ## 五、选择固化规则
 
-以下选择一旦稳定，应按 `project_memory` 写入当前宿主项目规则；Claude Code 可写入项目级 `CLAUDE.md` 的 paper-master 标记块，Antigravity 写入项目根目录的 `GEMINI.md` 或工作区 `AGENTS.md` 标记块，ZCode 写入工作区 `AGENTS.md` 的 paper-master 标记块，OMP 写入 `.omp/AGENTS.md` 或工作区 `AGENTS.md` 标记块，OpenCode/Codex 缺少宿主规则文件时写入 `paper-workspace/_index/project-rules.md`：
+以下选择一旦稳定，应按 `project_memory` 写入当前宿主**已有**的项目规则文件的 paper-master 标记块（维护纪律见 `references/project-rules-writing-layer.md`）；没有宿主规则文件时写入 `paper-workspace/_index/project-rules.md`：
 
 - 模块模式、研究范式、学理化风格、输出路径等长期偏好。
 - Team 五项选择。
@@ -75,7 +75,7 @@ options: [
 
 ## 六、机制图风格偏好型（mechanigraph）
 
-在生成学术机制图（纯矢量 SVG）前，主流程必须调用 `ask_user` 一次性向用户确认制图风格偏好（在 Claude Code 用 `AskUserQuestion`，OMP 用 `ask`，Antigravity 用 `ask_question`，Codex 用 `request_user_input`）。
+在生成学术机制图（纯矢量 SVG）前，主流程必须调用 `ask_user` 一次性向用户确认制图风格偏好（映射到当前宿主的实际问询工具；`ask_user` 不可用时改为单轮自然语言一次性列出并给建议选项）。
 
 ### 问题 1: 拓扑构型流派
 ```text

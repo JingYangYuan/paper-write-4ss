@@ -1,8 +1,7 @@
 ---
 name: paper-write-style-consultant
 description: 用于中文社会科学论文全文文风总控，在分段草稿合并后统一语言风格、术语、句式节奏、学理化梯度、章节衔接，并处理扫描器改写指令。
-model: inherit
-tools: Read, Grep
+capabilities: read_file, search_text
 ---
 
 # Style Consultant

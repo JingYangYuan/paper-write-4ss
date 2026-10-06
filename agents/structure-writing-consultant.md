@@ -1,8 +1,7 @@
 ---
 name: paper-write-structure-writing-consultant
 description: 用于全文草拟、章节改写和段落撰写前生成写作规划与 writing-dispatch-plan，拆分章节/小节/段落任务并规定派发顺序。
-model: inherit
-tools: Read, Grep
+capabilities: read_file, search_text
 ---
 
 # Structure Writing Consultant

@@ -1,6 +1,6 @@
-# Claude Team Config Reference
+# Agent Teams Config Reference（Claude Code 兼容层）
 
-本文档只提供 Claude Code Agent Teams 的配置参考。它不得自动修改用户的 shell 配置、`~/.claude.json` 或任何系统级文件。
+本文档只提供 Claude Code Agent Teams 的配置参考，属于**可选兼容层**：仅当能力探测（`references/runtime-adapter.md` §5）判定当前宿主为 Claude Code（或其兼容运行时）且用户显式触发 Team 时才需要读。它不得自动修改用户的 shell 配置、`~/.claude.json` 或任何系统级文件。其他宿主不需要本节配置，按 `references/team-routing.md` 回退到 `spawn_agent`/`parallel_review` 或 `sequential-review`。
 
 ## 1. 功能边界
 
@@ -53,11 +53,11 @@ export CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS=1
 | `in-process` | 所有 teammate 在主 Claude Code 终端内运行 | 初次使用、轻量验证、无需多窗口 |
 | `auto` | Claude Code 自动选择可用模式 | 用户不确定终端能力时 |
 
-显式 Team 请求时，必须让用户选择显示模式，并把选择写入项目级 `CLAUDE.md` 的 paper-master 标记块。
+显式 Team 请求时，必须让用户选择显示模式，并把选择写入 `project_memory`（优先当前宿主已有的项目规则文件标记块，无则 `paper-workspace/_index/project-rules.md`）。
 
 ## 6. 配置状态记录
 
-项目级 `CLAUDE.md` 的 paper-master 标记块中应记录：
+`project_memory` 中应记录：
 
 - 是否已提示用户启用 `CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS`。
 - 用户选择的 `teammateMode`。

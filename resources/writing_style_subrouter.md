@@ -231,7 +231,7 @@
 
 Skill 在完成双层研究路由后，如果进入润色、改写或开头/结尾设计模式，应使用 ask_user 增加以下问题。若用户选择"不确定，请推荐"，则根据其余答案自动推荐主策略和备选策略。
 
-结构化示例模块统一遵守 `references/ask-user-question-examples.md`。风格子路由可按以下示例分组提问：
+结构化示例模块统一遵守 `references/user-question-examples.md`。风格子路由可按以下示例分组提问：
 
 ```text
 question: "这篇论文最适合从哪类小处进入？"

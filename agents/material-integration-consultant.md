@@ -1,8 +1,7 @@
 ---
 name: paper-write-material-integration-consultant
 description: 用于段落撰写和章节改写时判断文献、数据、访谈、案例与正文论证如何嵌入。
-model: inherit
-tools: Read, Grep
+capabilities: read_file, search_text
 ---
 
 # Material Integration Consultant

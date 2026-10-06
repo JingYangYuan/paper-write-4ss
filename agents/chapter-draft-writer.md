@@ -1,8 +1,7 @@
 ---
 name: paper-write-chapter-draft-writer
 description: 用于中文社会科学论文章节、分节或段落草稿撰写，根据研究路由、大纲、章节标准、范文截取、证据映射和用户材料生成可复核正文。
-model: inherit
-tools: Read, Grep
+capabilities: read_file, search_text
 ---
 
 # Chapter Draft Writer

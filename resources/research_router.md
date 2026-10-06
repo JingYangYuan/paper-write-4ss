@@ -50,7 +50,7 @@
 
 Skill 应按顺序提问。
 
-结构化示例模块统一遵守 `references/ask-user-question-examples.md`。第一层可使用以下 ask_user 示例：
+结构化示例模块统一遵守 `references/user-question-examples.md`。第一层可使用以下 ask_user 示例：
 
 ```text
 question: "你的研究问题属于哪一类？"
