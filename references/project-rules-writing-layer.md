@@ -1,21 +1,24 @@
-# Project Rules Writing Layer
+# Project Rules Writing Layer（项目规则维护规范）
 
-本文档定义 `paper-master-4ss` 如何通过 `project_memory` 在**用户项目**中创建、插入、更新和读取项目级规则文件。本包不预设文件名：优先使用当前宿主**已有**的项目规则文件（如 Claude Code 兼容层的 `CLAUDE.md`、Antigravity 的 `GEMINI.md`、工作区 `AGENTS.md`、`.omp/AGENTS.md`，或任何宿主会加载的规则文件），套用同一套标记块纪律；只有确认没有宿主规则文件时，才回退到 `paper-workspace/_index/project-rules.md`。任何宿主都不得把项目规则写进 `paper-master-4ss` skill 包目录。
+本规范定义 `paper-master-4ss` 在项目层面持久化长期规则与用户选择的写入位置、标记块格式及冲突处理方式。
 
-## 1. 落点规则
+## 1. 存储位置与优先级
 
-- 项目规则必须写入用户项目文件夹，不写入 `paper-master-4ss` skill 包目录。
-- 先探测当前宿主已有的项目规则文件（见 `references/runtime-adapter.md` §4 与 §5）；**只在已确认属于当前宿主的规则文件里创建或更新标记块**，不要为不存在的宿主凭空新建文件。
-- 宿主没有项目规则文件时，写入 `paper-workspace/_index/project-rules.md`。
-- Claude Code 兼容层下的默认落点是项目根 `CLAUDE.md`（仅当探测结果为 Claude Code 或用户明确要求兼容 Claude Code 时）。
-- 默认项目文件夹是 `paper-workspace/` 所在目录的父目录。
-- 若用户显式指定项目根目录，则以用户指定路径为准。
-- 若当前工作目录还没有 `paper-workspace/`，先把当前工作目录视为项目根目录；创建 `paper-workspace/` 时保持二者关系一致。
-- 不得创建 `/Users/yjy/.skills-manager/skills/paper-master-4ss/CLAUDE.md`、`AGENTS.md` 或任何规则文件在 skill 包目录内。
+按以下优先级确定项目规则落点：
+1. **项目根目录已有规则文件**：优先写入当前运行环境实际加载的规则文件（如工作区的 `AGENTS.md` 等，以运行环境自动加载机制为准）。
+2. **`paper-workspace/_index/project-rules.md`**：仅当确认项目内不存在任何运行环境规则文件时，回退至此文件。
 
-## 2. 标记块
+四项位置边界：
+- 规则仅保存在论文项目目录内，不得写入 `paper-master-4ss` 技能包目录。
+- 写入前须按 `references/runtime-adapter.md` §4 与 §5 确认当前运行环境加载的规则文件路径；不得为未确认存在的运行环境新建专用规则文件。
+- 不预先限定固定文件名清单，沿用运行环境既有约定。
+- 技能包目录内禁止创建任何项目规则文件。
 
-若目标项目规则文件不存在（且已确认该文件名属于当前宿主），创建新文件。若已存在，不得覆盖全文，只维护以下标记块：
+项目根目录默认为 `paper-workspace/` 的父目录；若用户显式指定项目根则以指定目录为准；尚未建立 `paper-workspace/` 时以当前工作目录作为项目根。
+
+## 2. 标记块保护规则
+
+当目标规则文件尚未创建（且确认属于当前运行环境）时新建该文件；当目标规则文件已存在时，**严禁覆盖全文**，仅创建或更新以下标记块内部内容，标记块之外的所有用户原有规则保持原样不变：
 
 ```markdown
 <!-- paper-master-4ss:start -->
@@ -23,52 +26,40 @@
 <!-- paper-master-4ss:end -->
 ```
 
-更新时只替换标记块内的内容，保留用户在标记块外的其他规则。
+## 3. 读取顺序与冲突处置
 
-## 3. 读取优先级
+执行任何模块前，先读取运行环境规则文件中的 `paper-master-4ss` 标记块（若无则读取 `paper-workspace/_index/project-rules.md`），再加载包内协议文档。标记块内的已确认选择视为项目级约束。
 
-每次模块执行前，先读取当前宿主项目规则文件中的 paper-master 标记块，再读取 skill 包内协议文件。宿主没有规则文件时读取 `paper-workspace/_index/project-rules.md`。标记块中的用户选择是项目级约束。
+当用户当次明确指令与既有项目规则发生冲突时：
+1. 以用户当次指令为准执行；
+2. 将变更后的稳定选择同步写回标记块（或 `_index/project-rules.md`）；
+3. 在过程日志或最终回复中明确说明「项目选择已更新」及变更项，不得静默修改。
 
-若本次用户明确指令与项目规则冲突：
+## 4. 允许写入与禁止写入的内容
 
-1. 以本次用户明确指令为准。
-2. 将新选择写回 paper-master 标记块（或在无宿主规则文件时写 `_index/project-rules.md`）。
-3. 在过程日志或最终回复中说明已更新项目选择。
+判断标准：**仅记录跨阶段、长期有效的稳定选择与约束；不记录单次任务状态与敏感原文。**
 
-## 4. 写入时机
+| 允许写入 | 禁止写入 |
+|---|---|
+| 通过 `ask_user`、明确对话或指令确认的长期模块选择 | 临时任务说明、阶段待办与频繁变化的状态 |
+| 用户变更后的长期配置 | 研究主题的隐私材料或敏感路径明细 |
+| 可选多席位辩论（`multi_seat_debate`）的启用状态与回退记录 | 原始数据、访谈全文、身份映射表 |
+| 用户指定的新项目根目录、输出路径或模块策略 | 日志全文、shell 配置文件、token、cookie 或认证信息 |
 
-以下情况必须更新 `project_memory`：
-
-- 模块通过 `ask_user`、明确对话或用户命令获得稳定选择；结构化提问示例见 `references/user-question-examples.md`。
-- 用户改变既有选择。
-- 用户显式触发 Team 并完成 Team 五项选择。
-- Agent Teams 不可用并回退到普通 subagent/顺序复核。
-- 用户指定新的项目根目录、输出路径或模块策略。
-
-以下内容不得写入：
-
-- 临时任务说明。
-- 研究主题的详细隐私材料。
-- 原始数据、访谈原文、身份映射表、敏感路径明细。
-- 频繁变化的阶段状态、待办细节或日志全文。
-- 用户 shell 配置文件全文、token、cookie 或认证信息。
-
-## 5. 标记块结构
-
-paper-master 标记块应使用以下结构：
+## 5. 标记块标准模板
 
 ```markdown
 <!-- paper-master-4ss:start -->
 ## Paper Master 4SS Project Rules
 
-### 固定死规则
+### 固定约束
 - ...
 
 ### 用户选择记录
 | 模块 | 选择项 | 当前值 | 来源/更新时间 |
 |---|---|---|---|
 
-### Team 配置状态
+### Team / 多席位配置状态
 | 选择项 | 当前值 | 来源/更新时间 |
 |---|---|---|
 
@@ -78,57 +69,51 @@ paper-master 标记块应使用以下结构：
 <!-- paper-master-4ss:end -->
 ```
 
-## 6. 固定死规则
+## 6. 标记块须保留的核心约束
 
-标记块中必须保留以下死规则：
+- **加载顺序**：先按 `references/runtime-adapter.md` §5 探测运行能力并读取项目规则，再依次读取 `SKILL.md`、`references/install-dependencies.md`、`master/routing-matrix.md`、`master/agent-orchestration.md`、`master/output-protocol.md`、`master/user-journey.md`（`references/agent-software-adapters.md` 仅作形态对照）。
+- **路径边界**：正式产物统一写入项目内 `paper-workspace/`；外部输入材料仅登记路径，不搬运。
+- **参考库回查**：按 T0/T1/T2 分级执行（`references/agent-registry.md` §2）；顾问意见须回填 `参考库回查:`（`base=` / `tier=` / `判据=` / `缺口=`），T2 角色须逐条引用条目号与段落行号，缺行视为无效。
+- **多席位辩论（可选）**：`multi_seat_debate` 须经用户明确确认方可使用，不得自动发起；不支持或未启用时退回普通并行或顺序复核。
+- **Update 守门**：`update` 模块仅在 `paper-workspace/07-update/` 生成 `pending` 状态候选更新包，不得直接修改核心技能文件。
+- **真实性边界**：缺乏真实数据、脚本执行记录或可核验证据时，严禁伪造变量、统计量、显著性、访谈摘录、引文字段或投稿状态。
+- **执行审计**：分析命令执行后须完成 `post-bash` 审计，交付或停止前须完成 `stop-check` 检查；自动触发未确认生效时须手动运行 `scripts/paper_master_guard.py`（见 `references/hooks-and-evaluation.md`）。
+- **质量评分**：实质性模块执行完毕后运行 `paper_master_guard.py score-project`，更新 `_index/quality-score.md` 与 `quality-score.json`。
+- **顾问文件管理**：不向运行环境的 agent 目录复制顾问文件，仅在导向说明中引用 `modules/*/agents/*.md`，避免双份副本产生分歧。
+- **项目规则落点**：优先维护运行环境已有规则文件中的标记块，无此类文件时写入 `paper-workspace/_index/project-rules.md`，严禁写入技能包目录。
 
-- 技能加载顺序：先按 `references/runtime-adapter.md` §5 探测宿主能力并读取项目级 `project_memory`，再读 `SKILL.md`、`references/install-dependencies.md`、`master/routing-matrix.md`、`master/agent-orchestration.md`、`master/output-protocol.md`、`master/user-journey.md`；`references/agent-software-adapters.md` 只作样例对照；显式 Claude Code Team 请求再读 `references/multiagent-team-config.md` 与 `references/team-routing.md`。
-- 输出路径：正式产物统一写入项目内 `paper-workspace/`；用户输入材料只登记路径，不搬运。
-- 参考库回查：所有 agent、teammate 和顾问意见必须包含 `## 参考库回查`，列出已读取路径、采用框架、依据条款和参考缺口。
-- Team 显式触发：只有用户显式触发 Team，才进入 `references/team-routing.md`；显式触发后仍必须完成用户选择门槛，不得自动派发；当前宿主无 Agent Teams 形态时回退为 `parallel_review` 或 `sequential-review`。
-- Teammate 消息限制：每条消息不超过 3 句话；长内容写入文件并发送路径。
-- Update pending 规则：`update` 模块只生成 `pending` 候选更新包，不直接修改核心技能文件。
-- 分析真实性：没有真实数据、脚本执行结果或可核验证据时，不得伪造变量、统计结果、访谈摘录、显著性、引用字段或投稿状态。
-- Guard 审计：分析执行后必须执行 `guard_after_command`；最终停止或交付前必须执行 `guard_before_finish`，检查 `project-state.md` 与 `handoff-status.md` 是否随最新产物更新。宿主可自动触发时用自动触发；否则显式运行 `scripts/paper_master_guard.py post-bash|stop-check`（见 `references/hooks-and-evaluation.md`）。
-- Rubric 评分：每次实质性模块执行后运行 `paper_master_guard.py score-project`，把阶段质量分、全流程成熟度、失败归因和下一步修复写入 `_index/quality-score.md` 与 `_index/quality-score.json`。
-- Agent 文件策略：不复制 agent 文件到宿主 agent 目录（如 `.claude/agents/`），只通过导向说明引用 `modules/*/agents/*.md`。
-- `project_memory` 落点：优先当前宿主已有的项目规则文件的 paper-master 标记块；没有宿主规则文件时写入 `paper-workspace/_index/project-rules.md`；不得写入 skill 文件夹。
+## 7. 各模块需固化的用户选择字段
 
-## 7. 用户选择记录
+未获用户确认的字段一律记录为 `未确认`，不得由模型代填猜测值。
 
-按模块记录用户已确认选择。未确认时写 `未确认`，不得替用户猜测并固化。
-
-| 模块 | 必须记录的选择 |
+| 模块 | 须记录的长期选择字段 |
 |---|---|
-| `design` | 模式选择、学科领域、目标期刊、数据来源、方法偏好 |
-| `lit` | 检索模式、是否启用 `web_search`、本地文献库、Zotero、Annual Reviews、引文链、CNKI、Google Scholar |
+| `design` | 工作模式、学科领域、目标期刊、数据来源、方法偏好 |
+| `lit` | 检索模式、是否启用联网搜索、本地文献库、Zotero、Annual Reviews、引文链、CNKI、Google Scholar |
 | `outline` | 论文目的、学历层次、论文类型、目标期刊范式、预期字数、素材处理方式 |
-| `analysis` | 分析语言、数据路径、变量角色、模型/识别偏好、质性/混合方法路径、允许执行的 CLI |
-| `write` | 研究方法协议、发表范式、写作风格梯度、引言起笔策略、润色/扫描偏好 |
+| `analysis` | 分析语言、数据路径、变量角色、模型与识别偏好、质性/混合方法路径、允许执行的命令行工具 |
+| `write` | 研究方法协议、发表范式、写作风格梯度、引言起笔策略、润色与扫描偏好 |
 | `submission` | 稿件路径、投稿样式、Word 模板、引用体例、是否生成 cover letter 或 response letter |
-| `update` | 更新目的、目标模块、是否 self-update、证据补强要求、风险等级偏好 |
-| `mechanigraph` | 拓扑构型流派、外围大边框样式（实线/虚线/无外框）、分箱与连线风格（实线为主/虚实结合）、是否需要无头 Chrome 视觉复核 |
-| `teamagent` | 是否启用 Team、Team 规模、显示模式、是否 plan approval、是否允许 teammate 直接写文件 |
+| `update` | 更新目的、目标模块、是否 `self-update`、证据补强要求、风险等级偏好 |
+| `mechanigraph` | 拓扑构型流派、外围大边框样式（实线/虚线/无外框）、分箱与连线风格（实线为主/虚实结合）、是否启用无头 Chrome 视觉自检 |
+| `teamagent`（可选） | 是否启用多席位辩论、席位规模、是否允许子席位直接写入文件 |
 
-## 8. Team 配置状态
+## 8. 多席位辩论状态记录（仅启用时）
 
-显式 Team 请求后，应记录：
+启用 `multi_seat_debate` 时额外记录四项：
+1. 当前运行环境的并行子任务机制是否支持同角色互辩；
+2. 用户选定的席位规模与展示方式；
+3. 该能力当前实际可用状态；
+4. 若发生降级回退，记录回退原因及实际采用的替代方式（并行复核或顺序复核）。
 
-- 是否已提示用户启用宿主对应的实验开关（Claude Code 兼容层为 `CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS`）。
-- 用户选择的显示模式（Claude Code 兼容层为 `teammateMode`）。
-- Agent Teams 是否可用。
-- 若回退，回退原因和采用的普通派发方式（`parallel_review` 或 `sequential-review`）。
+后续执行默认沿用项目级席位规模与写权限设置，仅在用户明确变更时更新。
 
-后续 Team 执行默认沿用项目级显示模式、Plan approval 与 teammate 写文件权限；只有用户明确改选时才更新。
+## 9. 标准更新步骤
 
-## 9. 更新方式
+1. 定位项目根目录；
+2. 读取目标规则文件（若存在）；
+3. 保留 `<!-- paper-master-4ss:start -->` 与 `<!-- paper-master-4ss:end -->` 之外的原有内容；
+4. 合并或替换标记块内部内容；
+5. 在「更新说明」中记录本次更新时间、选择来源及冲突处置情况。
 
-更新 `project_memory`（当前宿主项目规则文件的 paper-master 标记块，或 `_index/project-rules.md`）时：
-
-1. 定位项目根目录。
-2. 读取现有项目规则文件（如存在）。
-3. 保留标记块外的用户内容。
-4. 合并或替换 paper-master 标记块。
-5. 在标记块内记录更新时间、选择来源和冲突处理。
-
-不要把模块日志、agent 原始意见或大段报告塞进项目规则文件。这些内容应写入 `paper-workspace/_logs/`。
+过程日志、顾问原始意见与模块报告须保存至 `paper-workspace/_logs/`，不得写入项目规则文件。

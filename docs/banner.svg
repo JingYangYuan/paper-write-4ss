@@ -107,7 +107,7 @@
 
     <g transform="translate(24 292)" font-family="ui-sans-serif, system-ui, -apple-system, sans-serif" font-size="12">
       <text fill="#64748b" font-weight="500">适配：</text>
-      <text x="42" fill="#cbd5e1" font-weight="600">Claude Desktop · Cursor · Oh My Pi · Windsurf</text>
+      <text x="42" fill="#cbd5e1" font-weight="600">任意 agent 宿主 · 能力探测 · 通用回退</text>
     </g>
   </g>
 </svg>

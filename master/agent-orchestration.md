@@ -1,43 +1,76 @@
-# Agent Orchestration Protocol
+# Agent Orchestration（顾问调度规范）
 
-本协议定义 `paper-master-4ss` 的默认顾问派发方式。总控和各模块先按 `references/runtime-adapter.md` 与 `references/agent-software-adapters.md` 确认当前宿主能力，再按本文件确定派发强度，随后读取 `master/output-protocol.md`、`references/agent-registry.md` 和目标模块的 `agents/` 文件；涉及文献综述成稿时，还必须读取 `master/literature-review-protocol.md`。
+本文件规定顾问（子代理）的选派原则、等待门槛、档位分级、输出归档与跨模块协同方式。执行前须按 `references/runtime-adapter.md` §5 完成运行能力探测，并结合 `master/output-protocol.md`、`references/agent-registry.md` 及目标模块的 `agents/` 文件使用；涉及综述成稿时，同时遵守 `master/literature-review-protocol.md`。
 
-## 1. 默认策略
+## 1. 基本原则
 
-- 默认采用情境化调度：先识别当前决策、材料、交接和质量风险，再选择最少必要顾问；不得只因理论/实证标签、模块名称或“实质性任务”自动派发固定数量。
-- 全流程、主题模糊、材料复杂、跨模块串联或质量风险高时，可增加独立复核；派发清单必须说明每个角色解决的风险及未派发其他角色的理由。
-- 普通 orchestration 是多 canonical agent 顾问派发；显式 Agent Team 是同一 canonical agent 的多视角辩论，二者不可互相替代。
-- Agent 文件 frontmatter 中不再声明 `tools:`/`model:`（见 `references/runtime-adapter.md` §1.5）；可选的能力声明用宿主无关键 `capabilities:`，且只是**声明意图**，不是运行时硬限制。任何宿主都必须按 `references/runtime-adapter.md` §5 把实际工具映射到 `read_file`、`search_text`、`web_search`、`web_fetch`、`browser_control`、`spawn_agent` 等通用能力；缺少能力时按本协议记录回退，不得伪造工具结果。
-- 派发前必须先规范化 agent 身份：凡用户选择、模块表格、路由矩阵或过程计划中出现短名、路径名或角色描述，都先对照 `references/agent-registry.md` 转成 agent 文件 frontmatter 的 `name:`，即 canonical agent name。`Agent Name` 是唯一执行身份；短名和 `modules/.../agents/*.md` 路径只作别名、阅读入口和角色协议路径。
-- 规范化后的派发清单必须同时写出：用户选择或模块选择原文、canonical agent name、agent 文件路径、派发顺序、并行或 `sequential-review` 状态。实际派发不得偏离该清单；如需增删顾问，必须先更新清单并说明理由。
-- 每个顾问必须先执行参考库回查：读取 `paper-master-4ss/modules/<module>/` 下本模块明确对应的 `references/`、`frame/`、`resources/`、`chapters/`、`scripts/` 或相关 phase 文件，并在顾问意见中列出已读取路径、采用框架、依据条款和参考缺口。
-- Design 模块必须先确认 FRAME/STORM/DESIGN/FULL 模式和研究取向；只有任务确实需要学科框架库时，才从选题提取 3-8 个关键词并调用 `frame_locator.py`。脚本结果进入需要该证据的顾问输入包，不能替代用户选择或触发固定顾问名单。
-- 轻量任务可以跳过顾问，但必须在最终回复或过程日志写明 `agent-skip` 和跳过原因。
-- 若当前宿主不能真实并行或没有 `spawn_agent` / `parallel_review` 能力，按同一顾问列表顺序复核，并在 `agent-brief.md`、对应顾问输出和 `agent-synthesis` 记录 `sequential-review` 与能力缺失原因。
-- 所有顾问输出、综合文件和最终回复遵守 `master/output-protocol.md`：使用中文 Markdown；顾问输出、综合文件和落盘报告若涉及派发链、机制链、流程链、分歧处理链或跨模块风险链，必须加入 Mermaid 图示和 2-4 条中文解释；直接发给用户的最终回复按 `master/output-protocol.md` 第 6 节使用纯文字路径导航。
+- **按风险选派**：依据当前步骤的决策风险、材料复杂度、交接跨度与质量风险选派最少必要角色。严禁因研究范式（如实证/理论）或模块名称套用固定名单。派活清单须列明每个拟派角色解决的风险及未派角色的原因。
+- **多席位辩论（可选）**：常规模式为单顾问单视角。若运行环境支持同角色多席位互辩（`multi_seat_debate`），须经用户确认方可使用；不支持时退回顺序复核，不单独为此增加能力探测步骤。
+- **能力声明与工具映射**：顾问文件 frontmatter 不声明 `tools:` 或 `model:`（见 `references/runtime-adapter.md` §1.5）；可选的 `capabilities:` 仅表示能力意图。实际工具按 `references/runtime-adapter.md` §5 映射至通用动作；缺失能力须记录回退方式，不得虚构结果。
+- **使用标准名执行**：用户口语简称或路径简写仅供阅读，执行前必须对照 `references/agent-registry.md` 解析为顾问 frontmatter 中的 `name:`（标准名）。
+- **锁定派活清单**：派发前须在 `agent-brief.md` 中完整记录：用户或模块需求、标准名、顾问文件路径、档位（L0/L1/L2）、执行顺序、并行或顺序复核方式。中途增删角色须先更新清单并说明理由。
+- **参考库分级回查**：按 T0/T1/T2 分级执行（详见 `references/agent-registry.md` §2）。各模块的必读清单、判据条目与角色附加项统一维护在 `modules/<module>/agents/_reference-base.md`。主流程负责向顾问提供 B1 切片（不超过 1200 字），顾问须在意见开头回填一行 `参考库回查: base=…; tier=…; 判据=…; 缺口=…`。T2 角色须逐条引用条目号与段落行号并填写缺口字段。不得要求每个顾问重复通读全模块参考库。
+- **`design` 模块前置条件**：须先确认工作模式（FRAME/STORM/DESIGN/FULL）与研究取向。仅当任务需要使用学科框架库时，提取 3–8 个关键词调用 `frame_locator.py`，其输出仅作为输入线索，不替代研究者决策或顾问选派判断。
+- **轻量任务跳过**：满足 L0 条件时可不派发顾问，但须在日志或最终回复中记录 `agent-skip` 及理由。
+- **能力缺失降级**：运行环境不支持子代理或并行复核时，由主流程按同一角色清单依次复核，并在 `agent-brief.md`、意见文件与 `agent-synthesis` 中记录 `sequential-review` 及缺失的能力名。
+- **输出规范**：顾问意见与综合报告采用中文 Markdown，涉及调度链、机制链、流程链、分歧处理链或退回链时附 Mermaid 图及 2–4 句中文解释；面向用户的最终回复按 `master/output-protocol.md` 第 6 节使用纯文本路径图。
 
-## 1.5 派发完成硬门槛（agent-completion-gate，2026-09-05 实测修订）
+## 1.5 结果等待门槛（`agent-completion-gate`）
 
-- **同步阻塞铁律**：凡被派发的 canonical agent，主流程必须等待其到达终态（completed / failed-with-exhausted-retries）后才允许进入下一步。禁止"派发后台 agent + 先行推进其他阶段 + 事后补综合"的流水线写法——后台并行仅是执行方式，不是跳过等待的理由。
-- **失败重试**：agent 派发失败（并发限额、模型无输出、超时）时，必须按顺序重试至多 2 次（重试间隔中不得推进主模块任务）；两次重试仍失败，才允许降级为 `sequential-review`（主流程按角色顺序复核），且必须在 agent-synthesis 中记录 `agent-gate-block: failed×2 + sequential-review` 与失败原因。
-- **终态核验**：收到的 agent 返回值必须包含参考库回查与实质判断正文；空返回、纯寒暄、无参考回查的返回一律按 failed 处理并触发重试。
-- **记录格式**：派发清单中的"执行状态"列改为终态记录：`completed(回合数/耗时)` / `failed×N→sequential-review` / `failed×N→用户裁决`。
-- **宿主映射**：有 `spawn_agent` 能力的宿主用同步派发（等待返回值）实现本门槛；无 spawn_agent 宿主直接按 sequential-review 执行并记录能力缺失，不得伪造"已派发"。
+派发顾问后，在所有已派发顾问返回有效结果或确认失败前，不得推进后续主流程。
 
-## 2. 轻量任务例外
+- **禁止并行抢跑**：不得采用「先派发顾问、主流程继续推进、后续再补汇总」的流水线做法。支持同步派发时直接等待返回；仅支持异步派发时，应在结果回投后再恢复推进。不得虚构等待记录。
+- **失败与重试**：发生并发限额、空返回、超时或模型无输出时判定为失败，最多重试 1 次。重试仍失败时，允许降级为顺序复核，并在 `agent-synthesis` 中记录 `agent-gate-block: failed×1 + sequential-review` 及失败原因。
+- **有效返回判定**：返回值必须包含格式合法的 `参考库回查:` 行及实质判断正文；空返回、纯寒暄或缺失回查行均视为失败并触发重试。
+- **终态记录**：派活清单中的执行状态须记录为 `completed(回合数/耗时)`、`failed×N→sequential-review` 或 `failed×N→用户裁决`。
+- **能力映射**：具备 `spawn_agent` 能力时使用同步派发或等结果回投；缺失该能力时直接走顺序复核并记录能力缺失，不得标为「已派活」。
 
-以下任务可不派发顾问：
+## 1.6 派发档位（L0 / L1 / L2）
 
-- 仅登记输入路径、查看项目状态或摘要已有产物。
-- 单文件格式检查、依赖检查或明确的转换命令。
-- 单张机制图的快速生成/原图复刻可作为轻量任务执行（由主流程或 `svg-designer` 快速完成）；但对于全套宏大理论框架图（如跨宏中微观、三元综合治理或多元对偶系统出图），必须派发 `topology-consultant` 梳理构型与因果实体，再派发 `svg-designer` 执行绘制与自检。
-- 用户明确要求只回答一个事实性问题，且不进入论文流程。
+依据四个维度判定档位：**判断分歧度**（能否机械校验）、**写入不可逆性**、**来源与诚信风险**（结论是否进入正文或投稿包）、**交接跨度**（产物是否传递至下游模块）。
 
-例外不得用于跳过设计、文献、分析、写作或投稿的质量复核；不得用于跳过 agent 的参考库回查。
+| 档位 | 适用条件 | 派发数量 | 执行方式 |
+|---|---|---|---|
+| **L0（`agent-skip`）** | 须同时满足：①输出可由脚本或人工直接核验；②无不可逆写入；③不产生需承担学术责任的声称；④不涉及跨模块交接 | 0 | 主流程直接执行，日志记录 `agent-skip: <原因>` |
+| **L1（单点复核）** | ①分歧集中于单一维度（理论/方法/结构/文风/引用体例）；②输入文件 ≤3 个且上游产物 ≤1 个；③写入可回滚或无写入 | 1（取该模块风险最高角色） | 派发 1 次，注入 `_reference-base.md` 的 B1 切片；不启用 worktree |
+| **L2（串联复核）** | 满足任一项：①跨模块交接；②不可逆写入（正文净稿落盘、代码执行、导出投稿包）；③涉及因果声称或引用对应等诚信风险；④用户明确要求全流程、完整审阅或达到可投稿状态 | 2–4（按模块链路串行） | 按序派发；起草者与复核者须分离；多写手并行写入同一工作目录时须用 worktree 隔离 |
 
-## 3. 输出落盘
+**各模块 L1 默认角色**（同步维护于各模块 `agents/_reference-base.md` 的 B3）：
 
-每次派发顾问时创建：
+| 模块 | L1 默认标准名 | 选派依据 |
+|---|---|---|
+| design | `paper-design-critical-review-consultant` | 持有阶段放行阻断权，优先暴露致命缺陷 |
+| lit | `paper-lit-hypothesis-bridge-consultant` | 验证空白到假设的桥接合理性，防止下游整体偏离 |
+| outline | `paper-outline-gap-review-consultant` | 缺口结论直接决定是否具备写作条件 |
+| analysis | `paper-analysis-identification-consultant` | 识别策略有误时后续稳健性检验无意义 |
+| write | `paper-write-draft-review-consultant` | 单次覆盖论证强度、材料嵌入与章节门槛 |
+| check | `paper-check-reviewer` | 模块内唯一综合审稿角色 |
+| submission | `paper-submission-conformance-consultant` | 统筹核查版式规范与引文一致性 |
+| update | `paper-update-review-gate-consultant` | 负责 `pending` 更新包的风险守门 |
+| mechanigraph | `paper-mechanigraph-topology-consultant`（单图复刻走 L0） | 拓扑构型错误会导致整张矢量图返工 |
+
+**升档条件**（满足任一项即升档并记录理由）：两角色结论冲突需第三方裁决；发现上游证据缺口须退回；结论将进入正文净稿或投稿包；用户在 L1 之后要求达到可投稿标准。
+
+**降档处理**：L1 顾问返回无效结果时按 §1.5 重试 1 次；仍失败则由主流程按顺序复核补全，记录 `agent-gate-block`，不得伪造已派发记录。
+
+**运行纪律**：
+- 不自动启动 `workflow` 编排；L2 属于顺序派发，不等同于 `workflow`。
+- 并行写入须开 worktree；若无必要，采用串行起草加 `assemble_drafts.py` 拼接更稳妥。
+- 需引入另一模型独立对照时，不新增顾问文件，直接通过 `agy_run` 调用，结论以「外部对照」身份写入 `agent-synthesis`，不占用顾问编号。
+
+## 2. 免派发顾问的例外情形
+
+以下轻量任务可直接由主流程执行（须在日志中记录 `agent-skip` 及原因，免予参考库回查，对应 T0 级）：
+- 登记输入路径、查询项目状态、摘要已有产物；
+- 单文件格式检查、依赖检查或明确的单步格式转换；
+- 单张机制图的快速生成或原图复刻（可由主流程或 `svg-designer` 直接完成；宏大跨层次理论框架图仍须先派 `topology-consultant` 审定构型，再由 `svg-designer` 绘制与自检）；
+- 仅回答不进入论文正文的事实性咨询。
+
+上述例外不得用于绕过设计、文献、分析、写作与投稿环节的质量复核。
+
+## 3. 顾问输出归档与注入规范
+
+每次派发顾问均须建立独立归档目录：
 
 ```text
 paper-workspace/_logs/agents/[module]-[YYYY-MM-DD]/
@@ -46,44 +79,38 @@ paper-workspace/_logs/agents/[module]-[YYYY-MM-DD]/
 └── agent-synthesis-[module]-[YYYY-MM-DD].md
 ```
 
-`agent-brief.md` 记录研究主题、输入路径、当前阶段、已知产物、用户约束、需要顾问判断的问题，并附规范化派发清单：用户选择或模块选择原文、canonical agent name、agent 文件路径、派发顺序、并行或 `sequential-review` 状态。
+- **`agent-brief.md`**：记录研究主题、输入路径、当前阶段、已知产物、用户约束、待判断问题及完整派活清单。
+- **公共块与参考注入**：派发前必须读取 `references/agent-prompt-blocks.md`，将角色卡中的每个 `<!-- block: <ID> -->` 展开为对应正文追加至 prompt 末尾，同时按 `agents/_reference-base.md` B3 注入 B1 切片与附加参考内容。仅传递文件路径或 block ID 视为未注入。
+- **`[agent-name].md`**：保存顾问原始输出，须包含：参考库回查行、判断结论、依据、风险与修改建议。
+- **按 `task_id` 拆分归档**：`paper-write-chapter-draft-writer` 与 `paper-analysis-code-writer` 支持按 `task_id` 多次派发，须分别归档为 `[agent-name]--{task_id}.md`。`write` 章节草稿须经 `scripts/assemble_drafts.py` 生成合并草稿、source map 与检查结果并由主流程审阅后，方可交由 `paper-write-draft-review-consultant` 与 `paper-write-style-consultant` 复核。
+- **`agent-synthesis-[module]-[YYYY-MM-DD].md`** 须包含以下六项：
+  1. **派活清单**：用户/模块原需求、标准名、文件路径、档位、执行顺序、并行/顺序复核方式及输入摘要；
+  2. **核心共识**：多方一致的判断（若引用同一批底座条目，须注明同源，不得计为多次独立验证）；
+  3. **核心分歧**：互相冲突的意见；
+  4. **采纳决策**：主流程采纳的结论；
+  5. **未采纳理由**：暂不采纳的建议及依据；
+  6. **后续风险**：进入下一阶段前仍需处理的问题。
 
-每个 `[agent-name].md` 保存该顾问的原始意见，沿用顾问文件中的“参考库回查/判断/依据/风险/建议”结构。
+`agent-synthesis` 须使用中文 Markdown；存在派活链、分歧处理链、跨模块风险链或退回链时，须附 Mermaid `flowchart LR` 或 `flowchart TD` 及节点说明。
 
-Write 模块的 `paper-write-chapter-draft-writer` 是特殊的可重复派发 canonical writer：同一 canonical agent 可按 `writing-dispatch-plan` 的多个 `task_id` 并行或顺序执行，但每个任务必须独立落盘为 `paper-write-chapter-draft-writer--{task_id}.md`。这些 writer 输出必须经 `scripts/assemble_drafts.py` 拼接，生成 draft、source map 和 assembly check，并由主 agent 阅读审查后，才可进入 argument、material、style 和 chapter-reviewer 顾问链。
+## 4. 索引同步要求
 
-`agent-synthesis` 必须包含：
+顾问调度完成后，须同步更新以下索引文件：
+- `paper-workspace/_index/project-state.md`：更新派活状态、关键风险、新增产物与下一步建议；
+- `paper-workspace/_index/handoff-status.md`：更新供下游阶段使用的已采纳结论与未解决风险；
+- `paper-workspace/_index/paper-roadmap.md`：按 `master/user-journey.md` 更新当前阶段、推荐下一步、暂缓事项与退回提示。
 
-- 派发清单：用户选择或模块选择原文、canonical agent name、agent 文件路径、派发顺序、并行或 `sequential-review` 状态、输入摘要。
-- 核心共识：哪些判断一致。
-- 核心分歧：哪些判断冲突。
-- 采纳决策：主流程采纳了什么。
-- 未采纳理由：哪些建议暂不采纳及原因。
-- 后续风险：进入下一阶段前仍需处理的问题。
+## 5. 跨模块协同默认顾问
 
-`agent-synthesis` 必须使用中文 Markdown；若存在派发链、分歧处理链、跨模块风险链或回流链，必须加入 Mermaid `flowchart LR` 或 `flowchart TD` 图示，并在图后解释关键节点、采纳路径和剩余风险。
+全流程推进、整理状态或阶段不清时，在主模块之外可按需增派相邻阶段顾问（仅提供风险预判，不替代主模块执行）：
 
-## 4. 索引更新
-
-模块结束后，总控或模块主流程必须把以下内容写入：
-
-- `paper-workspace/_index/project-state.md`：本次顾问派发状态、关键风险、已生成产物、下一步建议。
-- `paper-workspace/_index/handoff-status.md`：进入下阶段时应交接的顾问结论和未解决风险。
-- `paper-workspace/_index/paper-roadmap.md`：按 `master/user-journey.md` 更新当前位置、推荐下一步、暂不建议事项和回流提醒。
-
-## 5. 跨模块默认链路
-
-当用户请求全流程、继续推进、整理项目或当前阶段不清时，先确定主模块，再按相邻阶段追加顾问：
-
-| 当前主任务 | 默认追加顾问 |
+| 当前主流程 | 建议增派的跨模块顾问 |
 |---|---|
-| 选题/设计 | lit 的 `search-strategy` 预判文献可检索性；analysis 的 `identification-model` 预判方法可行性 |
-| 文献综述 | design 的 `theory-consultant` 校准理论锚点；outline 的 `structure-consultant` 预判结构承接；正文成稿按 `master/literature-review-protocol.md` 交接 write 的 `structure-writing` 与 `chapter-draft-writer` |
-| 大纲构建 | write 的 `structure-writing` 预判写作顺序；analysis 的 `result-reporting` 预判经验章节需求 |
-| 数据分析 | write 的 `argument-consultant` 预判结果声称边界；submission 的 `citation-integrity` 预判引用回流 |
-| 写作润色 | check 的 editorial-screening、argument-integrity、ethics-conformance 做综合复核；通过质量门后才交 submission |
-| 全流程审稿 | check 的 editorial-screening + argument-integrity + ethics-conformance（完整审稿并行，必须等待终态）；实质修改精确回流 write 或前序模块 |
-| 投稿整备 | write 的 `chapter-standard-reviewer` 复核需回流正文的问题；check 已通过后再处理格式与投稿包 |
-| 学术机制图 | design 的 `theory-consultant` 复核因果中介逻辑；analysis 的 `result-reporting` 校准实证变量关系；write 的 `style-consultant` 预判正文插图排版与图题格式 |
-
-跨模块顾问只做预判和风险提示，不替代主模块执行。
+| 选题 / 研究设计 | `paper-lit-search-strategy-consultant`（评估文献可检索性）；`paper-analysis-identification-consultant`（评估实证方法可行性） |
+| 文献综述 | `paper-design-theory-consultant`（校准理论锚点）；`paper-outline-structure-consultant`（预判大纲承接）；成稿阶段按 `master/literature-review-protocol.md` 交 `write` 的 `paper-write-structure-writing-consultant` 与 `paper-write-chapter-draft-writer` |
+| 大纲构建 | `paper-write-structure-writing-consultant`（规划写作顺序）；`paper-analysis-reporting-consultant`（明确经验章节所需表图） |
+| 数据分析 | `paper-write-draft-review-consultant`（界定结果可声称边界）；`paper-submission-conformance-consultant`（检查引用退回风险） |
+| 写作润色 | `paper-check-reviewer`（综合复核，通过后方可进入 `submission`） |
+| 全流程审稿 | `paper-check-reviewer`（按完整审稿单派发并等待交回；实质修改精确退回前置模块） |
+| 投稿整备 | `paper-write-draft-review-consultant`（复核需退回正文的修改项；经 `check` 通过后再调整排版与投稿包） |
+| 学术机制图 | `paper-design-theory-consultant`（复核因果中介逻辑）；`paper-analysis-reporting-consultant`（校准实证变量关系）；`paper-write-style-consultant`（核对插图排版与图题体例） |

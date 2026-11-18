@@ -1,46 +1,47 @@
 #!/usr/bin/env python3
-"""Register the paper-master-4ss guard hooks into a host configuration.
+"""Register the paper-master-4ss guard hooks into the current agent host.
 
-Host-agnostic successor of ``register_zcode_hooks.py``. The guard contract is
-identical on every host:
+The guard contract is identical on every host:
 
 * a post-command hook runs ``paper_master_guard.py post-bash`` (pass = 0;
   ``--strict`` makes audit problems exit 2);
 * a stop hook runs ``paper_master_guard.py stop-check`` (blocking = 2).
 
-Only the plumbing differs: where the host keeps hook configuration, how events
-are nested, what the host calls its shell tool, and whether hook stdout must be
-kept clean. Those are described by ``BACKENDS``; hosts without a hook interface
-use the manual commands in ``references/hooks-and-evaluation.md`` instead.
+Only the plumbing differs: where the host keeps hook configuration, how the
+events are nested, and what the host calls its shell tool. Those three facts
+are not guessed here. On first use the script runs a short wizard: you pick the
+configuration file (``--detect`` lists candidates first), the hook shape, and
+the matcher name; the answer is stored as a profile and reused afterwards.
+
+Shapes (see ``references/agent-software-adapters.md`` §2 for the JSON):
+
+  A  project-level file, ``hooks.<PostEvent>`` and ``hooks.Stop`` each wrap a
+     ``hooks`` array with a matcher.
+  B  user-level file, events under ``hooks.events`` plus an ``enabled`` switch,
+     hook stdout usually suppressed.
+  C  project-level file, a namespace block whose post event wraps a ``hooks``
+     array and whose stop event is a flat list.
 
 Modes:
-  (default)          register the hooks for the selected host (idempotent)
-  --check            read-only: report whether both hooks are registered
-  --remove           remove the hooks registered by this script
-  --print            print the host hook snippet and exit without writing
-  --strict           include --strict in the registered post-bash command
-  --host auto|<name> select the host (default: auto detective rules below)
-  --project <dir>    project root for project-scoped hosts (default: cwd)
-  --config <file>    override the target configuration file (for testing)
-
-``auto`` only writes when it finds positive evidence for the *current* host:
-an explicit environment hint, or a project-local configuration directory. It
-never guesses from a home-level configuration of some other host, and it never
-writes when no known host is detected.
+  --setup    run the wizard and store the profile (then register)
+  --detect   read-only: list JSON files that look like hook configuration
+  (default)  register the hooks described by the profile (idempotent)
+  --check    read-only: report whether both hooks are registered
+  --remove   remove the hooks registered by this script
+  --print    print the hook snippet and exit without writing
+  --strict   include --strict in the registered post-bash command
 
 Safety: writes are append-only, idempotent, and preceded by a
 ``*.paper-master.bak`` backup. Only the hook keys of the target file are
-touched; ``~/.claude.json`` is never read or written.
+touched. A file that cannot be parsed is left untouched.
 """
 
 from __future__ import annotations
 
 import argparse
 import json
-import os
-import shutil
 import sys
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from pathlib import Path
 
 PKG_ROOT = Path(__file__).resolve().parents[1]
@@ -48,82 +49,122 @@ GUARD = PKG_ROOT / "scripts" / "paper_master_guard.py"
 DEFAULT_WORKSPACE = "paper-workspace"
 BACKUP_SUFFIX = ".paper-master.bak"
 GUARD_MARK = "paper_master_guard.py"
-EVENT_POST = "PostToolUse"
-EVENT_STOP = "Stop"
+PROFILE_DIR = ".paper-master"
+PROFILE_NAME = "host-profile.json"
+
+POST_DEFAULT = "PostToolUse"
+STOP_DEFAULT = "Stop"
+DEFAULT_MATCHER = "Bash"
+
+# 形状只描述嵌套方式，不描述软件。字段含义见模块 docstring。
+SHAPES: dict[str, dict] = {
+    "A": {
+        "events_path": ["hooks"],
+        "wrapped_post": True,
+        "wrapped_stop": True,
+        "enable_path": [],
+        "timeout_ms": 0,
+        "redirect_stdout": False,
+        "label": "项目级：hooks 下的事件各包一层 hooks 数组",
+    },
+    "B": {
+        "events_path": ["hooks", "events"],
+        "wrapped_post": True,
+        "wrapped_stop": True,
+        "enable_path": ["hooks", "enabled"],
+        "timeout_ms": 30000,
+        "redirect_stdout": True,
+        "label": "用户级：hooks.events 下挂事件，另有 enabled 开关",
+    },
+    "C": {
+        "events_path": ["paper-master-guard"],
+        "wrapped_post": True,
+        "wrapped_stop": False,
+        "enable_path": [],
+        "timeout_ms": 0,
+        "redirect_stdout": False,
+        "label": "项目级：命名空间块，Stop 事件为扁平列表",
+    },
+}
 
 
-@dataclass(frozen=True)
-class Backend:
-    """Host hook plumbing."""
+@dataclass
+class Profile:
+    """Where the hooks go and how they are nested."""
 
-    key: str
-    label: str
-    path: str
-    scope: str
-    events_path: tuple
-    post_matcher: str
-    post_wrapped: bool = True
-    stop_wrapped: bool = True
+    config: Path
+    shape: str = "A"
+    events_path: tuple = ("hooks",)
+    wrapped_post: bool = True
+    wrapped_stop: bool = True
     enable_path: tuple = ()
-    timeout_key: str = ""
-    timeout_value: int = 0
+    timeout_ms: int = 0
     redirect_stdout: bool = False
-    env_keys: tuple = ()
-    local_hints: tuple = ()
+    matcher: str = DEFAULT_MATCHER
+    extra: dict = field(default_factory=dict)
 
+    def as_dict(self) -> dict:
+        return {
+            "config": str(self.config),
+            "shape": self.shape,
+            "events_path": list(self.events_path),
+            "wrapped_post": self.wrapped_post,
+            "wrapped_stop": self.wrapped_stop,
+            "enable_path": list(self.enable_path),
+            "timeout_ms": self.timeout_ms,
+            "redirect_stdout": self.redirect_stdout,
+            "matcher": self.matcher,
+        }
 
-BACKENDS = (
-    Backend(
-        key="claude-code",
-        label="Claude Code",
-        path=".claude/settings.json",
-        scope="project",
-        events_path=("hooks",),
-        post_matcher="Bash",
-        env_keys=("CLAUDE_PROJECT_DIR", "CLAUDE_PLUGIN_ROOT", "CLAUDECODE"),
-        local_hints=(".claude/settings.json", ".claude"),
-    ),
-    Backend(
-        key="antigravity",
-        label="Antigravity",
-        path=".agents/hooks.json",
-        scope="project",
-        events_path=("paper-master-guard",),
-        post_matcher="run_command",
-        stop_wrapped=False,
-        env_keys=("ANTIGRAVITY_HOME", "AGY_HOME", "ANTIGRAVITY_PROJECT_DIR"),
-        local_hints=(".agents/hooks.json", ".agents"),
-    ),
-    Backend(
-        key="zcode",
-        label="ZCode",
-        path="~/.zcode/cli/config.json",
-        scope="home",
-        events_path=("hooks", "events"),
-        post_matcher="^Bash$",
-        enable_path=("hooks", "enabled"),
-        timeout_key="timeoutMs",
-        timeout_value=30000,
-        redirect_stdout=True,
-        env_keys=("ZCODE_HOME", "ZCODE_CONFIG_DIR", "ZCODE_PROJECT_DIR"),
-    ),
-)
-BACKEND_BY_KEY = {b.key: b for b in BACKENDS}
+    @classmethod
+    def from_shape(cls, config: Path, shape: str, matcher: str, redirect: bool | None) -> "Profile":
+        spec = SHAPES.get(shape.upper())
+        if spec is None:
+            raise SystemExit(f"未知形状 {shape}；可用：{', '.join(SHAPES)}")
+        return cls(
+            config=config,
+            shape=shape.upper(),
+            events_path=tuple(spec["events_path"]),
+            wrapped_post=bool(spec["wrapped_post"]),
+            wrapped_stop=bool(spec["wrapped_stop"]),
+            enable_path=tuple(spec["enable_path"]),
+            timeout_ms=int(spec["timeout_ms"]),
+            redirect_stdout=bool(spec["redirect_stdout"]) if redirect is None else redirect,
+            matcher=matcher,
+        )
+
+    @classmethod
+    def load(cls, path: Path) -> "Profile | None":
+        if not path.exists():
+            return None
+        try:
+            data = json.loads(path.read_text(encoding="utf-8"))
+        except json.JSONDecodeError as exc:
+            print(f"无法解析 profile {path}（{exc}）；请重跑 --setup。", file=sys.stderr)
+            return None
+        if not isinstance(data, dict) or not data.get("config"):
+            print(f"profile {path} 缺少 config 字段；请重跑 --setup。", file=sys.stderr)
+            return None
+        return cls(
+            config=Path(str(data["config"])).expanduser(),
+            shape=str(data.get("shape", "A")).upper(),
+            events_path=tuple(data.get("events_path") or ("hooks",)),
+            wrapped_post=bool(data.get("wrapped_post", True)),
+            wrapped_stop=bool(data.get("wrapped_stop", True)),
+            enable_path=tuple(data.get("enable_path") or ()),
+            timeout_ms=int(data.get("timeout_ms") or 0),
+            redirect_stdout=bool(data.get("redirect_stdout", False)),
+            matcher=str(data.get("matcher") or DEFAULT_MATCHER),
+        )
+
+    def save(self, path: Path) -> None:
+        path.parent.mkdir(parents=True, exist_ok=True)
+        path.write_text(json.dumps(self.as_dict(), ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
 
 
 # --------------------------------------------------------------------------- #
 # configuration helpers
 # --------------------------------------------------------------------------- #
-
-# 宿主/外层 harness 自带 hook 层的会话标记：这类运行时通过 preset 或平台配置
-# 注入 hooks，自动检测不应再往项目或用户目录写第二份宿主配置。只做精确匹配，
-# 不做前缀猜测。
-HARNESS_OWN_HOOK_KEYS = (
-    "DSH_HOME",
-    "DSH_SESSION_ID",
-    "DSH_PROFILE",
-    "DSH_PROFILE_DIR",
-)
 
 def get_mapping(root: dict, path: tuple, create: bool):
     node = root
@@ -152,8 +193,8 @@ def set_value(root: dict, path: tuple, value) -> None:
     node[path[-1]] = value
 
 
-def get_events(data: dict, backend: Backend, create: bool):
-    return get_mapping(data, backend.events_path, create)
+def get_events(data: dict, profile: Profile, create: bool):
+    return get_mapping(data, profile.events_path, create)
 
 
 def event_groups(events: dict, name: str, create: bool):
@@ -185,6 +226,8 @@ def save_config(path: Path, data: dict):
     backup = None
     if path.exists():
         backup = path.with_name(path.name + BACKUP_SUFFIX)
+        import shutil
+
         shutil.copy2(path, backup)
     path.write_text(json.dumps(data, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
     return backup
@@ -214,7 +257,7 @@ def iter_hook_entries(groups):
             yield group.get("matcher", None), group
 
 
-def find_wrapped(groups, matcher: str):
+def find_wrapped(groups, matcher):
     for group in groups:
         if isinstance(group, dict) and group.get("matcher", None) == matcher:
             inner = group.get("hooks")
@@ -223,28 +266,28 @@ def find_wrapped(groups, matcher: str):
     return None
 
 
-def hook_entry(backend: Backend, command: str) -> dict:
+def hook_entry(profile: Profile, command: str) -> dict:
     entry = {"type": "command", "command": command}
-    if backend.timeout_key:
-        entry[backend.timeout_key] = backend.timeout_value
+    if profile.timeout_ms:
+        entry["timeoutMs"] = profile.timeout_ms
     return entry
 
 
-def ensure_wrapped(backend: Backend, groups: list, matcher: str, subcommand: str, command: str) -> bool:
+def ensure_wrapped(profile: Profile, groups: list, matcher: str, subcommand: str, command: str) -> bool:
     inner = find_wrapped(groups, matcher)
     if inner is None:
         inner = []
         groups.append({"matcher": matcher, "hooks": inner})
     if has_our_hook(inner, subcommand):
         return False
-    inner.append(hook_entry(backend, command))
+    inner.append(hook_entry(profile, command))
     return True
 
 
-def ensure_flat(backend: Backend, groups: list, subcommand: str, command: str) -> bool:
+def ensure_flat(profile: Profile, groups: list, subcommand: str, command: str) -> bool:
     if has_our_hook(iter_hook_entries(groups), subcommand):
         return False
-    groups.append(hook_entry(backend, command))
+    groups.append(hook_entry(profile, command))
     return True
 
 
@@ -268,113 +311,68 @@ def strip_our_hooks(groups) -> bool:
     return changed
 
 
-def registered_state(data: dict, backend: Backend):
-    if backend.enable_path:
-        enabled = bool(get_value(data, backend.enable_path))
+def registered_state(data: dict, profile: Profile):
+    if profile.enable_path:
+        enabled = bool(get_value(data, profile.enable_path))
     else:
         enabled = True
     post = stop = False
     post_matcher = None
-    events = get_events(data, backend, create=False)
+    events = get_events(data, profile, create=False)
     if isinstance(events, dict):
-        groups = event_groups(events, EVENT_POST, create=False) or []
+        groups = event_groups(events, POST_DEFAULT, create=False) or []
         for matcher, entry in iter_hook_entries(groups):
             if is_ours(entry) and " post-bash " in f"{entry.get('command', '')} ":
-                if matcher == backend.post_matcher:
+                if matcher == profile.matcher:
                     post = True
                     post_matcher = matcher
                 elif post_matcher is None:
                     post_matcher = matcher
-        stop_groups = event_groups(events, EVENT_STOP, create=False) or []
+        stop_groups = event_groups(events, STOP_DEFAULT, create=False) or []
         stop = has_our_hook((entry for _, entry in iter_hook_entries(stop_groups)), "stop-check")
     return enabled, post, stop, post_matcher
 
 
-# --------------------------------------------------------------------------- #
-# host selection
-# --------------------------------------------------------------------------- #
-
-def project_root(arg: str) -> Path:
-    return Path(arg).expanduser().resolve()
-
-
-def resolve_config(backend: Backend, project: Path, override: str | None) -> Path:
-    if override:
-        return Path(override).expanduser()
-    if backend.scope == "home":
-        return Path(backend.path).expanduser()
-    return project / backend.path
-
-
-def detect_host(project: Path, note) -> str | None:
-    """Detect the current host from exact environment markers or project config.
-
-    Exact names only: broad prefixes misfire (for example a globally exported
-    ``CLAUDE_CODE_PACKAGE_MANAGER_AUTO_UPDATE`` says nothing about the host that
-    is running this skill). When nothing is found, nothing is written.
-    """
-    env = os.environ
-    for key in HARNESS_OWN_HOOK_KEYS:
-        if env.get(key):
-            note(f"检测到 {key}：当前运行时自带 hook 层（preset/平台配置），"
-                 "自动模式不写任何文件；如需本包 guard，请用 --host <name> 显式指定，"
-                 "或继续显式运行两条 guard 命令")
-            return None
-    for backend in BACKENDS:
-        for key in backend.env_keys:
-            if env.get(key):
-                note(f"环境变量 {key} 指向 {backend.label}")
-                return backend.key
-    for backend in BACKENDS:
-        if backend.scope != "project":
-            continue
-        for hint in backend.local_hints:
-            if (project / hint).exists():
-                note(f"项目内存在 {hint}")
-                return backend.key
-    return None
-
-
-def guard_command(backend: Backend, subcommand: str, workspace: str, strict: bool) -> str:
+def guard_command(profile: Profile, subcommand: str, workspace: str, strict: bool) -> str:
     command = f'python3 "{GUARD}" {subcommand} --workspace {workspace}'
     if subcommand == "post-bash" and strict:
         command += " --strict"
-    if backend.redirect_stdout:
+    if profile.redirect_stdout:
         command += " >/dev/null"
     return command
 
 
-def snippet(backend: Backend, workspace: str, strict: bool) -> str:
-    """Render the hook snippet for a backend as pasteable JSON."""
-    post_entry = hook_entry(backend, guard_command(backend, "post-bash", workspace, strict))
-    stop_entry = hook_entry(backend, guard_command(backend, "stop-check", workspace, strict))
+def snippet(profile: Profile, workspace: str, strict: bool) -> str:
+    """Render the hook snippet for a profile as pasteable JSON."""
+    post_entry = hook_entry(profile, guard_command(profile, "post-bash", workspace, strict))
+    stop_entry = hook_entry(profile, guard_command(profile, "stop-check", workspace, strict))
     events: dict = {}
-    if backend.post_wrapped:
-        events[EVENT_POST] = [{"matcher": backend.post_matcher, "hooks": [post_entry]}]
+    if profile.wrapped_post:
+        events[POST_DEFAULT] = [{"matcher": profile.matcher, "hooks": [post_entry]}]
     else:
-        events[EVENT_POST] = [post_entry]
-    if backend.stop_wrapped:
-        events[EVENT_STOP] = [{"matcher": "", "hooks": [stop_entry]}]
+        events[POST_DEFAULT] = [post_entry]
+    if profile.wrapped_stop:
+        events[STOP_DEFAULT] = [{"matcher": "", "hooks": [stop_entry]}]
     else:
-        events[EVENT_STOP] = [stop_entry]
+        events[STOP_DEFAULT] = [stop_entry]
 
     wrapper: dict = {}
     node = wrapper
-    for key in backend.events_path[:-1]:
+    for key in profile.events_path[:-1]:
         node[key] = {}
         node = node[key]
-    node[backend.events_path[-1]] = events
-    if backend.enable_path:
+    node[profile.events_path[-1]] = events
+    if profile.enable_path:
         enode = wrapper
-        for key in backend.enable_path[:-1]:
+        for key in profile.enable_path[:-1]:
             enode = enode.setdefault(key, {})
-        enode[backend.enable_path[-1]] = True
+        enode[profile.enable_path[-1]] = True
     return json.dumps(wrapper, ensure_ascii=False, indent=2)
 
 
 GENERIC_CONTRACT = """通用 hook 契约（宿主自定 JSON 形状）：
 
-  PostToolUse / 命令执行后（matcher = 该宿主的 shell 工具名，如 Bash、run_command）
+  PostToolUse / 命令执行后（matcher = 该宿主的 shell 工具名）
     python3 "{guard}" post-bash --workspace {workspace}
   Stop / 会话结束前
     python3 "{guard}" stop-check --workspace {workspace}
@@ -384,34 +382,177 @@ GENERIC_CONTRACT = """通用 hook 契约（宿主自定 JSON 形状）：
   * 若宿主把 hook stdout 当作严格 JSON 解析，请在命令后追加 >/dev/null，只保留退出码与 stderr；
   * 命令需用本包绝对路径，或宿主提供的插件根变量；无 paper-workspace/ 时 guard 静默退出。
   * 宿主已有自己的 hook 机制（插件 preset、平台配置）时，优先用宿主机制，不必运行本脚本。
+
+要自动注册：先跑 --detect 找配置，再跑 --setup 走向导，答案存进 .paper-master/host-profile.json。
 """.format(guard=GUARD, workspace=DEFAULT_WORKSPACE)
+
+
+# --------------------------------------------------------------------------- #
+# discovery + wizard
+# --------------------------------------------------------------------------- #
+
+def detect_candidates(project: Path, limit: int = 12) -> list[Path]:
+    """List JSON files that contain a top-level ``hooks`` key.
+
+    Pure shape detection: no host names, no fixed paths. Project tree first
+    (depth-limited), then dot-directories in the home folder.
+    """
+    found: list[Path] = []
+    seen: set[Path] = set()
+
+    def consider(path: Path) -> None:
+        if path in seen or not path.is_file() or not path.name.endswith(".json"):
+            return
+        seen.add(path)
+        try:
+            if path.stat().st_size > 512 * 1024:
+                return
+            data = json.loads(path.read_text(encoding="utf-8"))
+        except (OSError, ValueError):
+            return
+        if not isinstance(data, dict):
+            return
+        if "hooks" in data or any(isinstance(v, dict) and "PostToolUse" in v for v in data.values()):
+            found.append(path)
+
+    def walk(base: Path, depth: int) -> None:
+        if depth < 0 or not base.is_dir():
+            return
+        try:
+            entries = list(base.iterdir())
+        except OSError:
+            return
+        for entry in entries:
+            if entry.name in {"node_modules", ".git", "__pycache__", "paper-workspace"}:
+                continue
+            if entry.is_dir():
+                walk(entry, depth - 1)
+            else:
+                consider(entry)
+
+    walk(project, 3)
+    project_hits = list(found)
+    home = Path.home()
+    try:
+        dot_dirs = [d for d in home.iterdir() if d.is_dir() and d.name.startswith(".")]
+    except OSError:
+        dot_dirs = []
+    for dot in dot_dirs:
+        if dot.name in {".git", ".cache", ".npm", ".conda"}:
+            continue
+        walk(dot, 2)
+        if len(found) >= limit:
+            break
+    # 项目内的排前面
+    found.sort(key=lambda p: (0 if p in project_hits else 1, str(p)))
+    return found[:limit]
+
+
+def _ask(prompt: str, default: str = "") -> str | None:
+    """Prompt once. Returns None when stdin is not interactive."""
+    if not sys.stdin.isatty():
+        return None
+    suffix = f" [{default}]" if default else ""
+    try:
+        answer = input(f"{prompt}{suffix}: ").strip()
+    except (EOFError, KeyboardInterrupt):
+        return None
+    return answer or default
+
+
+def run_setup(project: Path, profile_path: Path, args) -> Profile | None:
+    """Interactive wizard: pick config file, shape, matcher; persist the profile."""
+    config = Path(args.config).expanduser() if args.config else None
+    if config is None:
+        candidates = detect_candidates(project)
+        if candidates:
+            print("发现这些像 hook 配置的文件：")
+            for i, path in enumerate(candidates, 1):
+                print(f"  {i}. {path}")
+        else:
+            print("没有自动找到 hook 配置；请直接给出目标配置文件的路径。")
+        print("宿主通常把自己放在项目内（如 <项目>/.某目录/settings.json）或用户主目录下的点目录里。")
+        raw = _ask("选择编号或输入配置文件路径（留空=退出）", "")
+        if raw is None:
+            print("当前不是交互终端；用 --config <file> --shape A|B|C 直接给出参数。", file=sys.stderr)
+            return None
+        if not raw:
+            return None
+        if raw.isdigit() and 1 <= int(raw) <= len(candidates):
+            config = candidates[int(raw) - 1]
+        else:
+            config = Path(raw).expanduser()
+    if not config.is_absolute():
+        config = (project / config).resolve()
+
+    shape = (args.shape or "").upper()
+    if not shape:
+        print("\n钩子事件的嵌套方式：")
+        for key, spec in SHAPES.items():
+            print(f"  {key}. {spec['label']}")
+        print("  形状说明见 references/agent-software-adapters.md §2；不确定就选 A 并先跑 --print 核对。")
+        shape = (_ask("选择形状", "A") or "A").upper()
+    if shape not in SHAPES:
+        print(f"未知形状 {shape}；可用：{', '.join(SHAPES)}", file=sys.stderr)
+        return None
+
+    matcher = args.matcher
+    if matcher is None:
+        matcher = _ask("\n该宿主的 shell 工具在 matcher 里叫什么（填工具名或正则）", DEFAULT_MATCHER)
+        if matcher is None:
+            return None
+
+    redirect = args.quiet_stdout
+    if redirect is None:
+        default_redirect = "y" if SHAPES[shape]["redirect_stdout"] else "n"
+        answer = _ask("\n宿主是否把 hook 的 stdout 按严格 JSON 解析（y=命令尾部加 >/dev/null）", default_redirect)
+        if answer is None:
+            return None
+        redirect = answer.lower().startswith("y")
+
+    profile = Profile.from_shape(config, shape, matcher, redirect)
+    profile.save(profile_path)
+    print(f"\n已写入 profile：{profile_path}")
+    print(f"  配置文件：{profile.config}")
+    print(f"  形状：{profile.shape}  事件路径：{'.'.join(profile.events_path)}  matcher：{profile.matcher}")
+    return profile
 
 
 # --------------------------------------------------------------------------- #
 # commands
 # --------------------------------------------------------------------------- #
 
-def cmd_print(backend: Backend | None, workspace: str, strict: bool) -> int:
-    if backend is None:
+def cmd_detect(project: Path) -> int:
+    candidates = detect_candidates(project)
+    if not candidates:
+        print("没有找到含 hooks 键的 JSON 配置；用 --config <file> 直接指定。")
+        return 1
+    for path in candidates:
+        print(path)
+    return 0
+
+
+def cmd_print(profile: Profile | None, workspace: str, strict: bool) -> int:
+    if profile is None:
         print(GENERIC_CONTRACT)
         return 0
-    print(f"# {backend.label}（{backend.key}）hook 片段")
-    print(f"# 目标文件：{backend.path}")
-    print(snippet(backend, workspace, strict))
+    print(f"# 形状 {profile.shape}  hook 片段")
+    print(f"# 目标文件：{profile.config}")
+    print(snippet(profile, workspace, strict))
     print()
     print(GENERIC_CONTRACT)
     return 0
 
 
-def cmd_check(backend: Backend, config_path: Path, as_json: bool) -> int:
-    data = load_config(config_path)
-    enabled, post, stop, matcher = registered_state(data, backend)
+def cmd_check(profile: Profile, as_json: bool) -> int:
+    data = load_config(profile.config)
+    enabled, post, stop, matcher = registered_state(data, profile)
     registered = bool(enabled and post and stop)
     if as_json:
         print(json.dumps({
-            "host": backend.key,
-            "config": str(config_path),
-            "config_exists": config_path.exists(),
+            "shape": profile.shape,
+            "config": str(profile.config),
+            "config_exists": profile.config.exists(),
             "enabled": enabled,
             "post": post,
             "post_matcher": matcher,
@@ -419,121 +560,131 @@ def cmd_check(backend: Backend, config_path: Path, as_json: bool) -> int:
             "registered": registered,
         }, ensure_ascii=False, indent=2))
     else:
-        print(f"host: {backend.label} ({backend.key})")
-        print(f"config: {config_path}")
-        if backend.enable_path:
-            print(f"hooks.enabled: {'true' if enabled else 'false/缺失'}")
-        print(f"{EVENT_POST}({backend.post_matcher}) -> guard post-bash: {'已注册' if post else '未注册'}")
-        print(f"{EVENT_STOP} -> guard stop-check: {'已注册' if stop else '未注册'}")
+        print(f"shape: {profile.shape}  config: {profile.config}")
+        if profile.enable_path:
+            print(f"{'.'.join(profile.enable_path)}: {'true' if enabled else 'false/缺失'}")
+        print(f"{POST_DEFAULT}({profile.matcher}) -> guard post-bash: {'已注册' if post else '未注册'}")
+        print(f"{STOP_DEFAULT} -> guard stop-check: {'已注册' if stop else '未注册'}")
     return 0 if registered else 1
 
 
-def cmd_remove(backend: Backend, config_path: Path) -> int:
-    if not config_path.exists():
-        print(f"未发现配置文件 {config_path}，无需移除。")
+def cmd_remove(profile: Profile) -> int:
+    if not profile.config.exists():
+        print(f"未发现配置文件 {profile.config}，无需移除。")
         return 0
-    data = load_config(config_path)
-    events = get_events(data, backend, create=False)
+    data = load_config(profile.config)
+    events = get_events(data, profile, create=False)
     changed = False
     if isinstance(events, dict):
-        for name in (EVENT_POST, EVENT_STOP):
+        for name in (POST_DEFAULT, STOP_DEFAULT):
             groups = event_groups(events, name, create=False)
             if groups:
                 changed = strip_our_hooks(groups) or changed
                 if not groups:
                     events.pop(name, None)
     if changed:
-        backup = save_config(config_path, data)
-        print(f"已移除 {backend.label} 的 paper-master guard hooks（备份: {backup}）" if backup
-              else f"已移除 {backend.label} 的 paper-master guard hooks")
+        backup = save_config(profile.config, data)
+        print(f"已移除 paper-master guard hooks（备份: {backup}）" if backup
+              else "已移除 paper-master guard hooks")
     else:
-        print(f"未发现可移除的 {backend.label} paper-master guard hooks")
+        print("未发现可移除的 paper-master guard hooks")
     return 0
 
 
-def cmd_register(backend: Backend, config_path: Path, workspace: str, strict: bool) -> int:
-    data = load_config(config_path)
-    events = get_events(data, backend, create=True)
+def cmd_register(profile: Profile, workspace: str, strict: bool) -> int:
+    data = load_config(profile.config)
+    events = get_events(data, profile, create=True)
     changed = False
-    post_command = guard_command(backend, "post-bash", workspace, strict)
-    stop_command = guard_command(backend, "stop-check", workspace, strict)
-    groups = event_groups(events, EVENT_POST, create=True)
-    if backend.post_wrapped:
-        changed = ensure_wrapped(backend, groups, backend.post_matcher, "post-bash", post_command) or changed
+    post_command = guard_command(profile, "post-bash", workspace, strict)
+    stop_command = guard_command(profile, "stop-check", workspace, strict)
+    groups = event_groups(events, POST_DEFAULT, create=True)
+    if profile.wrapped_post:
+        changed = ensure_wrapped(profile, groups, profile.matcher, "post-bash", post_command) or changed
     else:
-        changed = ensure_flat(backend, groups, "post-bash", post_command) or changed
+        changed = ensure_flat(profile, groups, "post-bash", post_command) or changed
 
-    stop_groups = event_groups(events, EVENT_STOP, create=True)
-    if backend.stop_wrapped:
-        inner = find_wrapped(stop_groups, None) or find_wrapped(stop_groups, "")
+    stop_groups = event_groups(events, STOP_DEFAULT, create=True)
+    if profile.wrapped_stop:
+        inner = find_wrapped(stop_groups, "") if find_wrapped(stop_groups, "") is not None else find_wrapped(stop_groups, None)
         if inner is None:
             inner = []
             stop_groups.append({"matcher": "", "hooks": inner})
         if not has_our_hook(inner, "stop-check"):
-            inner.append(hook_entry(backend, stop_command))
+            inner.append(hook_entry(profile, stop_command))
             changed = True
     else:
-        changed = ensure_flat(backend, stop_groups, "stop-check", stop_command) or changed
+        changed = ensure_flat(profile, stop_groups, "stop-check", stop_command) or changed
 
-    if backend.enable_path and not get_value(data, backend.enable_path):
-        set_value(data, backend.enable_path, True)
+    if profile.enable_path and not get_value(data, profile.enable_path):
+        set_value(data, profile.enable_path, True)
         changed = True
 
     if changed:
-        backup = save_config(config_path, data)
+        backup = save_config(profile.config, data)
         if backup:
-            print(f"已为 {backend.label} 注册 paper-master guard hooks（备份: {backup}）")
+            print(f"已注册 paper-master guard hooks（备份: {backup}）")
         else:
-            print(f"已为 {backend.label} 注册 paper-master guard hooks（新建配置，无原文件可备份）")
+            print("已注册 paper-master guard hooks（新建配置，无原文件可备份）")
         print("注册当次会话请继续显式运行 guard 命令；配置从下一次会话起自动触发。")
     else:
-        print(f"{backend.label} 的 paper-master guard hooks 已是注册状态，无需修改。")
+        print("paper-master guard hooks 已是注册状态，无需修改。")
     return 0
 
 
 def main(argv=None) -> int:
     parser = argparse.ArgumentParser(description=__doc__.splitlines()[0])
-    parser.add_argument("--host", default="auto",
-                        help="auto（默认）或宿主键：%s" % "、".join(BACKEND_BY_KEY))
+    parser.add_argument("--setup", action="store_true", help="运行向导，选择配置文件与 hook 形状并保存 profile")
+    parser.add_argument("--detect", action="store_true", help="只读：列出目录树里像 hook 配置的 JSON")
     parser.add_argument("--check", action="store_true", help="只读查询注册状态，不修改配置")
     parser.add_argument("--remove", action="store_true", help="移除本脚本注册的 hooks")
     parser.add_argument("--print", dest="print_only", action="store_true",
-                        help="打印该宿主的 hook 片段，不修改任何文件")
+                        help="打印 hook 片段，不修改任何文件")
     parser.add_argument("--strict", action="store_true",
                         help="注册的 post-bash 命令附带 --strict（审计问题退出码 2）")
-    parser.add_argument("--project", default=".", help="项目根目录（项目级宿主用，默认当前目录）")
+    parser.add_argument("--project", default=".", help="项目根目录（默认当前目录）")
     parser.add_argument("--workspace", default=DEFAULT_WORKSPACE, help="传给 guard 的 --workspace")
-    parser.add_argument("--config", default=None, help="目标配置文件（覆盖宿主默认路径，仅用于测试）")
+    parser.add_argument("--profile", default=None, help="profile 路径（默认 <项目>/.paper-master/host-profile.json）")
+    parser.add_argument("--config", default=None, help="目标配置文件（向导里跳过路径询问）")
+    parser.add_argument("--shape", default=None, choices=["A", "B", "C", "a", "b", "c"],
+                        help="hook 形状（向导里跳过形状询问）")
+    parser.add_argument("--matcher", default=None, help="matcher 名（向导里跳过询问）")
+    parser.add_argument("--quiet-stdout", dest="quiet_stdout", action="store_true", default=None,
+                        help="hook 命令尾部加 >/dev/null")
+    parser.add_argument("--no-quiet-stdout", dest="quiet_stdout", action="store_false",
+                        help="hook 命令尾部不加 >/dev/null")
     parser.add_argument("--json", action="store_true", help="--check 以 JSON 输出")
     args = parser.parse_args(argv)
 
-    project = project_root(args.project)
-    notes: list[str] = []
-    host = args.host
-    if host == "auto":
-        host = detect_host(project, notes.append)
-    if host is not None and host not in BACKEND_BY_KEY:
-        print(f"未知宿主 {host}；可用：{', '.join(BACKEND_BY_KEY)}", file=sys.stderr)
-        return 2
-    backend = BACKEND_BY_KEY[host] if host else None
-    for note in notes:
-        print(f"[auto] {note}")
+    project = Path(args.project).expanduser().resolve()
+    profile_path = (Path(args.profile).expanduser() if args.profile
+                    else project / PROFILE_DIR / PROFILE_NAME)
+
+    if args.detect:
+        return cmd_detect(project)
+
+    profile = Profile.load(profile_path)
+
+    if args.setup or (profile is None and not args.print_only and args.config):
+        profile = run_setup(project, profile_path, args)
+        if profile is None:
+            print("\n未完成配置；未修改任何文件。可用的通用片段：", file=sys.stderr)
+            print(GENERIC_CONTRACT, file=sys.stderr)
+            return 2
 
     if args.print_only:
-        return cmd_print(backend, args.workspace, args.strict)
+        return cmd_print(profile, args.workspace, args.strict)
 
-    if backend is None:
-        print("未能判定当前宿主；未修改任何文件。可用 --host <name> 指定，或直接采用下面的片段：",
-              file=sys.stderr)
-        print(GENERIC_CONTRACT)
+    if profile is None:
+        print(f"未找到 profile {profile_path}。", file=sys.stderr)
+        print("首次使用：先跑 --detect 看候选配置，再跑 --setup 走向导。未修改任何文件。", file=sys.stderr)
+        print(GENERIC_CONTRACT, file=sys.stderr)
         return 2
 
-    config_path = resolve_config(backend, project, args.config)
     if args.check:
-        return cmd_check(backend, config_path, args.json)
+        return cmd_check(profile, args.json)
     if args.remove:
-        return cmd_remove(backend, config_path)
-    return cmd_register(backend, config_path, args.workspace, args.strict)
+        return cmd_remove(profile)
+    return cmd_register(profile, args.workspace, args.strict)
 
 
 if __name__ == "__main__":

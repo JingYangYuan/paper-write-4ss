@@ -652,10 +652,253 @@ def cmd_score_project(args: argparse.Namespace) -> int:
     return 0
 
 
+# ---------------------------------------------------------------------------
+# agent-check: 32 个角色卡与 9 份回查底座的机械校验
+# ---------------------------------------------------------------------------
+
+PKG_ROOT = Path(__file__).resolve().parent.parent
+REGISTRY_REL = Path("references") / "agent-registry.md"
+REGISTRY_ROW_RE = re.compile(r"^\|\s*(\d+)\s*\|\s*`([^`]+)`\s*\|\s*`([^`]+)`\s*\|", re.MULTILINE)
+POINTER_RE = re.compile(
+    r"参考库回查:\s*base=(?P<base>[a-z][a-z0-9-]*-\d{4}\.\d{2}\.\d{2})\s*;"
+    r"\s*tier=(?P<tier>T[012])\s*;"
+    r"\s*判据=(?P<codes>[^;\n]*)\s*;"
+    r"\s*缺口=(?P<gap>[^;\n]*)"
+)
+C_CODE_RE = re.compile(r"C\d{2}")
+EXPECTED_AGENT_COUNT = 32
+EXPECTED_MODULE_COUNTS = {
+    "design": 4,
+    "lit": 4,
+    "outline": 3,
+    "analysis": 8,
+    "write": 4,
+    "check": 1,
+    "submission": 2,
+    "update": 4,
+    "mechanigraph": 2,
+}
+FORBIDDEN_AGENT_FRONTMATTER = ("tools", "model")
+BASE_FILENAME = "_reference-base.md"
+
+
+def parse_registry(root: Path) -> tuple[list[dict[str, str]], list[str]]:
+    """Parse the canonical registry table into rows and issues."""
+    issues: list[str] = []
+    path = root / REGISTRY_REL
+    if not path.is_file():
+        return [], [f"缺失注册表: {REGISTRY_REL}"]
+    text = path.read_text(encoding="utf-8", errors="replace")
+    rows: list[dict[str, str]] = []
+    for match in REGISTRY_ROW_RE.finditer(text):
+        rows.append(
+            {
+                "num": match.group(1),
+                "name": match.group(2).strip(),
+                "path": match.group(3).strip().replace("\\", "/"),
+            }
+        )
+    if len(rows) != EXPECTED_AGENT_COUNT:
+        issues.append(f"注册表行数 {len(rows)}，应为 {EXPECTED_AGENT_COUNT}")
+    return rows, issues
+
+
+def parse_frontmatter(text: str) -> dict[str, str] | None:
+    lines = text.splitlines()
+    if not lines or lines[0].strip() != "---":
+        return None
+    meta: dict[str, str] = {}
+    for line in lines[1:]:
+        if line.strip() == "---":
+            return meta
+        if not line.strip() or line[:1].isspace():
+            continue
+        if ":" not in line:
+            continue
+        key, value = line.split(":", 1)
+        meta[key.strip()] = value.strip()
+    return None
+
+
+def parse_base_section(text: str) -> tuple[str, set[str]]:
+    """Return (base-id, C codes declared in the B2 section)."""
+    meta = parse_frontmatter(text) or {}
+    base_id = meta.get("base-id", "").strip()
+    codes: set[str] = set()
+    in_b2 = False
+    for line in text.splitlines():
+        if line.startswith("## "):
+            in_b2 = line.startswith("## B2")
+            continue
+        if in_b2:
+            match = re.match(r"^(C\d{2})\s", line)
+            if match:
+                codes.add(match.group(1))
+    return base_id, codes
+
+
+def module_of(rel_path: str) -> str:
+    parts = rel_path.split("/")
+    return parts[1] if len(parts) > 2 and parts[0] == "modules" else ""
+
+
+def check_agent_card(root: Path, row: dict[str, str], base_cache: dict[str, tuple[str, set[str]]]) -> list[str]:
+    issues: list[str] = []
+    rel = row["path"]
+    module = module_of(rel)
+    label = f"{row['name']} ({rel})"
+    path = root / rel
+    if not path.is_file():
+        return [f"agent 文件不存在: {label}"]
+
+    text = path.read_text(encoding="utf-8", errors="replace")
+    meta = parse_frontmatter(text)
+    if meta is None:
+        return [f"frontmatter 非法（缺少或未闭合）: {label}"]
+    if meta.get("name", "") != row["name"]:
+        issues.append(f"frontmatter name 与注册表不一致: {label} -> {meta.get('name', '<空>')}")
+    if not meta.get("description", ""):
+        issues.append(f"frontmatter 缺 description: {label}")
+    for key in FORBIDDEN_AGENT_FRONTMATTER:
+        if key in meta:
+            issues.append(f"frontmatter 不应声明 `{key}:`（见 runtime-adapter §1.5）: {label}")
+
+    pointers = [line for line in text.splitlines() if "参考库回查:" in line]
+    if len(pointers) != 1:
+        issues.append(f"参考库回查指针行数 {len(pointers)}，应恰好 1 行: {label}")
+        return issues
+    pointer = POINTER_RE.search(pointers[0])
+    if pointer is None:
+        issues.append(f"参考库回查指针行格式不合法: {label} -> {pointers[0].strip()[:120]}")
+        return issues
+
+    base_id = pointer.group("base")
+    codes = C_CODE_RE.findall(pointer.group("codes"))
+    if not codes:
+        issues.append(f"指针行未列出判据条目号: {label}")
+    if not pointer.group("gap").strip():
+        issues.append(f"指针行缺口字段为空: {label}")
+    if pointer.group("tier") == "T2" and len(codes) < 3:
+        issues.append(f"T2 角色判据条目少于 3 条: {label}")
+
+    if not module:
+        issues.append(f"无法从路径推断模块: {label}")
+        return issues
+    if module not in base_cache:
+        base_path = root / "modules" / module / "agents" / BASE_FILENAME
+        if not base_path.is_file():
+            issues.append(f"缺失回查底座: modules/{module}/agents/{BASE_FILENAME}")
+            return issues
+        base_cache[module] = parse_base_section(base_path.read_text(encoding="utf-8", errors="replace"))
+
+    base_declared, base_codes = base_cache[module]
+    if not base_declared:
+        issues.append(f"回查底座缺 base-id: modules/{module}/agents/{BASE_FILENAME}")
+    elif base_declared != base_id:
+        issues.append(
+            f"指针 base={base_id} 与底座 base-id={base_declared} 不一致: {label}"
+        )
+    if not base_codes:
+        issues.append(f"回查底座 B2 未声明任何 C 条目: modules/{module}/agents/{BASE_FILENAME}")
+    else:
+        missing = sorted(set(codes) - base_codes)
+        if missing:
+            issues.append(f"引用条目不存在于底座 B2: {label} -> {', '.join(missing)}")
+    return issues
+
+
+def check_agent_logs(workspace: Path, root: Path, base_cache: dict[str, tuple[str, set[str]]]) -> list[str]:
+    """Optional: verify agent logs carry a valid pointer line (plan §3.3-4)."""
+    issues: list[str] = []
+    log_root = workspace / "_logs" / "agents"
+    if not log_root.is_dir():
+        return issues
+    for path in sorted(log_root.glob("*/*.md")):
+        if path.name in {"agent-brief.md"} or path.name.startswith("agent-synthesis-"):
+            continue
+        module = path.parent.name.split("-")[0]
+        if module not in EXPECTED_MODULE_COUNTS:
+            continue
+        text = path.read_text(encoding="utf-8", errors="replace")
+        pointers = [line for line in text.splitlines() if "参考库回查:" in line]
+        if not pointers:
+            issues.append(f"agent 日志缺参考库回查行: {path.relative_to(workspace)}")
+            continue
+        pointer = POINTER_RE.search(pointers[0])
+        if pointer is None:
+            issues.append(f"agent 日志回查行格式不合法: {path.relative_to(workspace)}")
+            continue
+        if module not in base_cache:
+            base_path = root / "modules" / module / "agents" / BASE_FILENAME
+            if not base_path.is_file():
+                issues.append(f"缺失回查底座: modules/{module}/agents/{BASE_FILENAME}")
+                continue
+            base_cache[module] = parse_base_section(base_path.read_text(encoding="utf-8", errors="replace"))
+        base_declared, base_codes = base_cache[module]
+        if base_declared and pointer.group("base") != base_declared:
+            issues.append(
+                f"日志 base={pointer.group('base')} 与底座 base-id={base_declared} 不一致: {path.relative_to(workspace)}"
+            )
+        missing = sorted(set(C_CODE_RE.findall(pointer.group("codes"))) - base_codes)
+        if missing:
+            issues.append(
+                f"日志引用条目不存在于底座 B2: {path.relative_to(workspace)} -> {', '.join(missing)}"
+            )
+    return issues
+
+
+def cmd_agent_check(args: argparse.Namespace) -> int:
+    root = Path(args.root).resolve() if getattr(args, "root", "") else PKG_ROOT
+    module_filter = (getattr(args, "module", "") or "").strip()
+    payload: dict[str, Any] = {"root": str(root), "module": module_filter or "all"}
+
+    rows, issues = parse_registry(root)
+    base_cache: dict[str, tuple[str, set[str]]] = {}
+    if not issues and module_filter and module_filter not in EXPECTED_MODULE_COUNTS:
+        issues.append(f"未知模块: {module_filter}")
+
+    selected = [row for row in rows if not module_filter or module_of(row["path"]) == module_filter]
+    for row in selected:
+        issues.extend(check_agent_card(root, row, base_cache))
+
+    if not module_filter:
+        counts: dict[str, int] = {name: 0 for name in EXPECTED_MODULE_COUNTS}
+        for row in rows:
+            module = module_of(row["path"])
+            if module in counts:
+                counts[module] += 1
+        for module, expected in EXPECTED_MODULE_COUNTS.items():
+            if counts.get(module, 0) != expected:
+                issues.append(f"模块 {module} 角色数 {counts.get(module, 0)}，应为 {expected}")
+
+    workspace_arg = getattr(args, "workspace", "") or ""
+    if workspace_arg:
+        workspace = workspace_path(workspace_arg)
+        if workspace.exists():
+            issues.extend(check_agent_logs(workspace, root, base_cache))
+
+    payload["status"] = "pass" if not issues else "block"
+    payload["agents_checked"] = len(selected)
+    payload["bases_checked"] = sorted(base_cache)
+    payload["issues"] = issues
+
+    if getattr(args, "json", False):
+        print(json.dumps(payload, ensure_ascii=False, indent=2))
+    elif issues:
+        print("paper-master-4ss agent-check blocked:", file=sys.stderr)
+        for issue in issues:
+            print(f"- {issue}", file=sys.stderr)
+    else:
+        print(
+            f"agent-check passed: {len(selected)} agents, bases={','.join(sorted(base_cache)) or '-'}"
+        )
+    return 0 if not issues else 2
+
+
 def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(description="paper-master-4ss hook and rubric guard")
     sub = parser.add_subparsers(dest="command", required=True)
-    for name in ("post-bash", "stop-check", "score-project"):
+    for name in ("post-bash", "stop-check", "score-project", "agent-check"):
         p = sub.add_parser(name)
         p.add_argument("--workspace", default="paper-workspace")
         if name == "post-bash":
@@ -665,6 +908,18 @@ def build_parser() -> argparse.ArgumentParser:
                 help="审计发现问题时以退出码 2 阻断；默认只写 stderr 与审计报告并返回 0",
             )
         if name == "score-project":
+            p.add_argument("--json", action="store_true")
+        if name == "agent-check":
+            p.add_argument(
+                "--module",
+                default="",
+                help="只校验单个模块（design/lit/outline/analysis/write/check/submission/update/mechanigraph）",
+            )
+            p.add_argument(
+                "--root",
+                default="",
+                help="技能包根目录；默认取本脚本所在包的上一级",
+            )
             p.add_argument("--json", action="store_true")
     return parser
 
@@ -678,6 +933,8 @@ def main(argv: list[str] | None = None) -> int:
         return cmd_stop_check(args)
     if args.command == "score-project":
         return cmd_score_project(args)
+    if args.command == "agent-check":
+        return cmd_agent_check(args)
     parser.error(f"unknown command: {args.command}")
     return 2
 

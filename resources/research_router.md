@@ -18,7 +18,7 @@
 
 ## 一、使用原则
 
-在开始写作之前，必须先完成研究路由。Skill 加载后，应使用 ask_user 工具向用户提问，不应跳过提问直接进入正文生成。
+在开始写作之前，必须先完成研究路由。Skill 加载后，应使用带选项的提问工具向用户提问，不应跳过提问直接进入正文生成。
 
 路由顺序如下。
 
@@ -46,11 +46,11 @@
 | 阐释研究 | 行动者如何理解，制度过程如何形成 | 访谈、档案、政策文本、历史材料、案例过程 | 语境、过程、意义、机制解释 | 把案例复述误写成理论分析 |
 | 混合研究 | 方法、技术或经验案例如何重塑研究实践 | 代码、日志、流程、案例、数据、文本 | 方法困境、系统设计、对照演示、方法论反思 | 技术说明与学术论证脱节 |
 
-### ask_user 提问
+### 带选项的提问提问
 
 Skill 应按顺序提问。
 
-结构化示例模块统一遵守 `references/user-question-examples.md`。第一层可使用以下 ask_user 示例：
+结构化示例模块统一遵守 `references/user-question-examples.md`。第一层可使用以下带选项的提问示例：
 
 ```text
 question: "你的研究问题属于哪一类？"
@@ -150,9 +150,9 @@ Skill 应输出以下内容。
 | 方法偏好 | 量化实证、质性田野、理论分析、混合方法 | 单案例、多案例、纵向案例、嵌入式案例 |
 | 结论风格 | 总结发现、回到知识脉络、讨论意义与局限 | 总结机制模型、强调理论贡献、实践启示和政策含义 |
 
-### ask_user 提问
+### 带选项的提问提问
 
-第二层可使用以下 ask_user 示例：
+第二层可使用以下带选项的提问示例：
 
 ```text
 question: "你的目标期刊风格是什么？"
@@ -419,7 +419,7 @@ python3 scripts/assemble_drafts.py \
 
 拼接脚本负责按计划顺序合并各段草稿，并检查缺失任务、重复 `task_id`、空正文草稿和未被计划引用的 writer 输出。脚本失败时不得继续派发后续顾问。
 
-拼接完成后，主 agent 必须阅读 `draft-[slug]-[YYYY-MM-DD].md`、`source-map-[slug]-[YYYY-MM-DD].md` 和 `assembly-check-[slug]-[YYYY-MM-DD].json`，将审查写入 `paper-workspace/05-writing/reviews/main-agent-review-[slug]-[YYYY-MM-DD].md`。主审查必须覆盖章节顺序、任务覆盖、段落来源、材料越界、缺失任务和不可声称内容。主审查完成后，再进入 `argument-consultant`、`material-integration-consultant`、`style-consultant` 文风总控和 `writing_scanner.py`。
+拼接完成后，主 agent 必须阅读 `draft-[slug]-[YYYY-MM-DD].md`、`source-map-[slug]-[YYYY-MM-DD].md` 和 `assembly-check-[slug]-[YYYY-MM-DD].json`，将审查写入 `paper-workspace/05-writing/reviews/main-agent-review-[slug]-[YYYY-MM-DD].md`。主审查必须覆盖章节顺序、任务覆盖、段落来源、材料越界、缺失任务和不可声称内容。主审查完成后，再进入 `draft-review-consultant`、`draft-review-consultant`、`style-consultant` 文风总控和 `writing_scanner.py`。
 
 ---
 

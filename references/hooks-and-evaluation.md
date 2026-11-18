@@ -1,144 +1,96 @@
-# Hooks and Evaluation
+# Hooks and Evaluation（执行审计与交付检查规范）
 
-本文档把 guard 审计与评估机制落到 `paper-master-4ss` 项目。目标是把高风险质量规则沉淀为机制层约束，而不是依赖顾问口头提醒。机制层由两个通用能力构成：`guard_after_command`（分析命令执行后复核 run-log 与产物）与 `guard_before_finish`（交付/停止前校验项目状态与交接状态）。任何宿主都可以通过**显式运行 guard 命令**满足这两个能力；有 hook 机制的宿主可通过注册器自动触发（见第 2 节），注册与否不改变 guard 的语义。
+本规范定义两项强制性过程校验的触发条件、检查内容与配置方式：
+1. **命令后审计（`post-bash`）**：执行分析命令后，核对 run-log 记录、stdout/stderr 路径、报错信号及登记输出文件是否存在。
+2. **交付前检查（`stop-check`）**：模块交付或会话停止前，核对 `_index/project-state.md` 与 `_index/handoff-status.md` 是否已同步至最新产物。
 
-## 1. 双层 Guard 方案
+运行环境配置自动 hook 后可自动触发上述检查；无论是否配置 hook，只要当前会话未能确认自动 hook 已生效，均须手动运行第 4 节命令。
 
-- **Skill 层**：可复用脚本（`scripts/paper_master_guard.py`）随 `paper-master-4ss` 版本管理，是 guard 的唯一实现（单一事实源）。本包不在 skill frontmatter 声明任何 hooks。
-- **宿主/项目层（可选）**：宿主自己的 hook 机制指向本包的 guard 脚本，从而自动触发。注册由 `scripts/register_host_hooks.py` 完成（见第 2 节），或由包外适配层/用户自行配置。
-- **手动层（始终可用）**：任何宿主在任何时候都可以显式运行第 4 节的两条命令；注册失败、当次会话尚未生效、宿主无 hook 机制时一律走这一层。
-- 注册或自动触发**不能替代**显式运行：当次会话若未确认 hook 已生效，仍显式运行两条命令。
-- 不把本包当作 Claude Code plugin 安装，也不为它创建整套宿主专属配置（如 `.claude/settings.json` 全量模板）；需要自动触发时只用第 2 节的注册器**追加本包所需的 guard 项**，或让包外适配层接管。
+## 1. 三层架构与纪律
 
-## 2. 注册宿主 hooks（`scripts/register_host_hooks.py`）
+- **校验脚本层**：`scripts/paper_master_guard.py` 为唯一校验实现。技能包 frontmatter 不声明任何 hooks。
+- **自动触发层（可选）**：通过 `scripts/register_host_hooks.py` 将上述两项校验注册至运行环境的 hook 配置，或由包外适配层配置。
+- **手动兜底层（始终可用）**：在无 hook 支持、注册失败或未确认生效时，直接通过命令行执行第 4 节命令。
+
+注册自动触发时仅增量添加本包所需的两项 guard，不覆盖已有配置，也不向包内写入环境专有模板。
+
+## 2. 自动 Hook 注册（可选）
 
 ```bash
-python3 scripts/register_host_hooks.py --host auto    # 自动探测（默认）；无证据时不写任何文件
-python3 scripts/register_host_hooks.py --host auto --check   # 只读查询（0=已注册，1=未注册，2=未知宿主）
-python3 scripts/register_host_hooks.py --host <name>  # 显式指定宿主
-python3 scripts/register_host_hooks.py --print        # 只打印将要写入/手工粘贴的配置，不写文件
-python3 scripts/register_host_hooks.py --host <name> --remove   # 撤销本包插入的 guard 项
+python3 scripts/register_host_hooks.py --host auto            # 自动探测并注册（无明确配置证据时不写入）
+python3 scripts/register_host_hooks.py --host auto --check    # 只读查询注册状态（0=已注册，1=未注册，2=未知环境）
+python3 scripts/register_host_hooks.py --host <name>          # 指定配置名称注册
+python3 scripts/register_host_hooks.py --print                # 预览生成的配置片段或通用契约，不写入文件
+python3 scripts/register_host_hooks.py --host <name> --remove # 移除本包注册的 hook 项
 ```
 
-- 宿主名与目标文件、事件名、matcher 由脚本内置的 backend 定义；`--print` 可查看当前支持的宿主与生成的配置形状，未知宿主会打印**通用契约**（两条 guard 命令 + 退出码约定）供手工配置。
-- **安全规则**：只在有明确证据时写入（`--host auto` 无证据时退出码 2 且不写任何文件）；写前备份为 `<file>.paper-master.bak`；只追加本包所需的 hook 项，不覆盖用户已有配置；幂等，重复执行不产生重复项。
-- **运行时不变量优先**：若会话暴露了「外层运行时自带 hook 层」的标记（例如带有 preset/平台 hook 的 harness 环境变量），`--host auto` 直接判定为无需注册并退出码 2，**即使项目里恰好存在某宿主的配置目录也不写入**；确有需要时用 `--host <name>` 显式指定。
-- **优先使用宿主已有的 hook 机制**：若宿主/包外适配层已经提供 guard 自动触发，不要重复注册。
-- 退出码约定：`0` 成功/已注册；`1` 未注册（`--check`）或目标配置无法解析（不写）；`2` 未知宿主或自动探测无证据（不写）。
-- 命令里的路径：优先使用本包内的显式相对路径或由包外适配层注入的根路径变量，**不要依赖 `${CLAUDE_PLUGIN_ROOT}`** 之类的宿主专有变量。
-- 注册后仍需注意宿主对 hook stdout 的解析要求（例如某些宿主按 JSON 解析 stdout、纯文本会被判为 failed）；guard 脚本对这类宿主提供输出重定向的写法，见第 7 节样例。
+注册边界与退出码约定：
+- **安全写入**：写入前自动备份为 `<file>.paper-master.bak`；仅增量修改 hook 项且支持幂等重复执行；配置文件解析失败时不写入任何内容。
+- **内置 Hook 让位**：若当前会话已存在外层运行环境提供的 hook 层，`--host auto` 直接退出（退出码 `2`）而不写入本地配置；确需覆盖时须显式指定 `--host <name>`。
+- **退出码**：`0` 表示成功或已注册；`1` 表示未注册（`--check`）或配置文件解析失败；`2` 表示未识别环境或自动探测无证据（未写入）。
+- **路径与输出处理**：命令路径使用显式路径而不依赖 `${CLAUDE_PLUGIN_ROOT}` 等专有变量；若运行环境将 hook 的 stdout 解析为严格 JSON，须按第 7 节 B 型格式在命令末尾重定向 `>/dev/null`。
 
-## 3. Guard 职责边界
+## 3. 审计与检查内容
 
-### `guard_after_command`（命令后审计）
+### 3.1 命令后审计（`post-bash`）
 
-触发条件：本会话执行过的命令/工具调用涉及 `Rscript`、`python3/python`、`.do/.R/.py`、`paper-workspace/04-analysis`，或 Stata MCP 调用（`stata_run_file`/`stata_run_selection`）等分析执行；调用后读取最新 run-log 复核。
+- **触发条件**：当前会话执行了 `Rscript`、`python3`/`python`、`.do`/`.R`/`.py` 脚本、`paper-workspace/04-analysis` 相关命令或 Stata MCP 调用（`stata_run_file` / `stata_run_selection`）。
+- **检查动作**：
+  1. 读取最新的 `paper-workspace/04-analysis/reports/run-log-[date].md`；
+  2. 检索 `blocked`、`error`、`failed`、`traceback`、Stata `r(...)`、R `Execution halted` 及非零退出码等失败信号；
+  3. 检查 run-log 是否记录 stdout/stderr 路径；
+  4. 核对 run-log 登记的输出文件是否真实存在；
+  5. 将审计结果写入 `paper-workspace/_logs/hook-audit/analysis-log-audit-[date].md`。
+- **退出行为**：默认退出码为 `0`（异常信息写入 stderr 与审计报告）；附加 `--strict` 时发现问题返回退出码 `2` 以阻断后续流程。不得将执行失败或未核验脚本的产出写入统计结论。
 
-处理器：`paper_master_guard.py post-bash`。
+### 3.2 交付前检查（`stop-check`）
 
-结果回灌：
+- **触发条件**：会话结束前或模块交付前。
+- **阻断规则**：
+  - 项目不存在 `paper-workspace/` 时放行（退出码 `0`）；
+  - 工作区尚无业务模块产物及流程日志时放行（退出码 `0`）；
+  - 存在模块产物或流程日志，但 `_index/project-state.md` 或 `_index/handoff-status.md` 缺失，或修改时间早于最新关键产物时，阻断交付（退出码 `2`）。
 
-- 检查最新 `paper-workspace/04-analysis/reports/run-log-[date].md`。
-- 标记 `blocked`、`error`、`failed`、`traceback`、Stata `r(...)`、R `Execution halted`、非零退出码。
-- 检查 run-log 是否记录 stdout/stderr 路径。
-- 检查 run-log 登记的输出文件是否存在。
-- 写入 `paper-workspace/_logs/hook-audit/analysis-log-audit-[date].md`。
-- 默认退出 0（仅把问题写 stderr）；加 `--strict` 时存在审计问题退出 2，便于宿主把问题回灌给 agent。
-
-`guard_after_command` 不能撤销已经执行的命令；它只负责把错误和证据缺口回灌给 agent。审计文件必须被分析报告读取，不能把失败或未验证脚本写成统计结论。自动触发由宿主 hook 提供（见第 2 节与第 7 节样例）；无自动触发时**必须**显式运行 `paper_master_guard.py post-bash`。
-
-### `guard_before_finish`（交付前阻断）
-
-触发条件：会话停止前 / 模块交付前。
-
-处理器：`paper_master_guard.py stop-check`。
-
-阻断规则：
-
-- 若当前项目没有 `paper-workspace/`，不阻断。
-- 若没有模块产物或流程日志，不阻断。
-- 若已有模块产物或流程日志，但 `_index/project-state.md` 或 `_index/handoff-status.md` 缺失/早于最新关键产物，`exit 2` 阻断停止。
-
-`guard_before_finish` 是交付前的机制约束：模块产物写完后必须更新项目状态和交接状态。自动触发由宿主 hook 提供；无自动触发时**必须**显式运行 `paper_master_guard.py stop-check`。
-
-## 4. 手动命令
+## 4. 手动执行命令
 
 ```bash
 python3 scripts/paper_master_guard.py post-bash --workspace paper-workspace
-python3 scripts/paper_master_guard.py post-bash --workspace paper-workspace --strict   # 审计问题即 exit 2
+python3 scripts/paper_master_guard.py post-bash --workspace paper-workspace --strict
 python3 scripts/paper_master_guard.py stop-check --workspace paper-workspace
 python3 scripts/paper_master_guard.py score-project --workspace paper-workspace --json
 ```
 
-## 5. 输出文件
+## 5. 产物文件路径
 
 - `paper-workspace/_logs/hook-audit/analysis-log-audit-[YYYY-MM-DD].md`
 - `paper-workspace/_index/quality-score.md`
 - `paper-workspace/_index/quality-score.json`
 
-## 6. 失败处理
+## 6. 异常处理
 
-- Guard 审计有问题：先修复日志、脚本执行或输出文件，再写分析结论。
-- `guard_before_finish` 阻断：更新 `project-state.md` 和 `handoff-status.md`，说明最新产物、质量分、阻断项和下一步。
-- Rubric 分数低：读取 `quality-score.md` 的 `failure_attribution` 和 `fix_next`，按数据、工具、流程、知识、提示或执行环境归因修复。
-- 注册器报未知宿主或探测无证据：不改任何文件，按 `--print` 的通用契约手工配置，或始终显式运行第 4 节命令。
+- **`post-bash` 发现问题**：先修正脚本、重新执行并更新 run-log 与输出文件，再撰写分析结论。
+- **`stop-check` 阻断**：同步更新 `_index/project-state.md` 与 `_index/handoff-status.md`（补充最新产物、质量分、阻断项与下一步建议）后重跑检查。
+- **评分偏低**：依据 `quality-score.md` 中的 `failure_attribution` 与 `fix_next` 补齐证据、日志或交接文件。
+- **自动注册不适用**：不修改配置文件，直接使用 `--print` 输出手工配置，或统一使用第 4 节手动命令。
 
-## 7. 已知宿主注册样例（样例，非宿主名单）
+## 7. 交互式向导与配置格式
 
-下列形状由 `register_host_hooks.py --print` 生成，仅用于对照；其他宿主按第 2 节的通用契约自行配置。把 `<PAPER_MASTER_4SS_ROOT>` 替换为本 skill 目录绝对路径（例如 `/Users/yjy/.skills-manager/skills/paper-master-4ss`）。
+若自动探测无法定位配置文件，可使用交互式向导保存配置到 `<项目根目录>/.paper-master/host-profile.json`：
 
-**Claude Code 兼容层** — 项目根 `.claude/settings.json`（只合并 `hooks` 节点）：
-
-```json
-{
-  "hooks": {
-    "PostToolUse": [
-      { "matcher": "Bash", "hooks": [ { "type": "command",
-        "command": "python3 <PAPER_MASTER_4SS_ROOT>/scripts/paper_master_guard.py post-bash --workspace paper-workspace" } ] }
-    ],
-    "Stop": [
-      { "matcher": "", "hooks": [ { "type": "command",
-        "command": "python3 <PAPER_MASTER_4SS_ROOT>/scripts/paper_master_guard.py stop-check --workspace paper-workspace" } ] }
-    ]
-  }
-}
+```bash
+python3 scripts/register_host_hooks.py --detect   # 扫描目录树中含 hooks 键的 JSON 文件
+python3 scripts/register_host_hooks.py --setup    # 交互式配置目标文件、格式与 matcher 并注册
+python3 scripts/register_host_hooks.py --check    # 查询注册状态
+python3 scripts/register_host_hooks.py --print    # 仅打印配置片段
+python3 scripts/register_host_hooks.py --remove   # 撤销本包注册项
 ```
 
-**Antigravity** — 项目根 `.agents/hooks.json`：
+三种 JSON 格式说明如下（完整片段见 `references/agent-software-adapters.md` §2，配置时将 `<ROOT>` 替换为本技能包根目录的绝对路径）：
 
-```json
-{
-  "paper-master-guard": {
-    "PostToolUse": [
-      { "matcher": "run_command", "hooks": [ { "type": "command",
-        "command": "python3 <PAPER_MASTER_4SS_ROOT>/scripts/paper_master_guard.py post-bash --workspace paper-workspace" } ] }
-    ],
-    "Stop": [
-      { "type": "command",
-        "command": "python3 <PAPER_MASTER_4SS_ROOT>/scripts/paper_master_guard.py stop-check --workspace paper-workspace" }
-    ]
-  }
-}
-```
+| 格式 | 结构特征 | 常见适用场景 |
+|---|---|---|
+| A | `hooks.<PostEvent>` 与 `hooks.Stop` 各嵌套一层 `hooks` 数组 | 项目级配置文件 |
+| B | `hooks.events.<PostEvent>`，附带 `hooks.enabled` 开关 | 用户级配置文件（常需追加 `>/dev/null`） |
+| C | 命名空间块内 Post 事件嵌套 `hooks` 数组，Stop 为扁平数组 | 命名空间隔离式项目配置 |
 
-**ZCode** — `~/.zcode/cli/config.json`（由 `--host zcode` 写入；`hooks.enabled: true`，matcher 为正则 `^Bash$`，guard stdout 经 `>/dev/null` 丢弃，因为 ZCode 按 strict-schema JSON 解析 hook stdout、纯文本会被标记为 failed）：
-
-```json
-{
-  "hooks": {
-    "enabled": true,
-    "events": {
-      "PostToolUse": [
-        { "matcher": "^Bash$", "hooks": [ { "type": "command", "timeoutMs": 30000,
-          "command": "python3 <PAPER_MASTER_4SS_ROOT>/scripts/paper_master_guard.py post-bash --workspace paper-workspace >/dev/null" } ] }
-      ],
-      "Stop": [
-        { "hooks": [ { "type": "command", "timeoutMs": 30000,
-          "command": "python3 <PAPER_MASTER_4SS_ROOT>/scripts/paper_master_guard.py stop-check --workspace paper-workspace >/dev/null" } ] }
-      ]
-    }
-  }
-}
-```
-
-`scripts/register_zcode_hooks.py` 是 `--host zcode` 的等价 shim，保留给历史文档与已有用户的调用习惯。guard 在没有 `paper-workspace/` 的目录静默退出，注册对其他项目无副作用；注册当次会话仍按第 4 节显式运行，配置从下一次会话起自动触发。
+上述配置自下一次会话起自动生效；完成注册的当前会话仍须按第 4 节手动执行校验。

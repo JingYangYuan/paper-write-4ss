@@ -2,24 +2,45 @@
 """
 中文学术写作综合扫描器 —— 纯检测 + 生成改写指令。绝不自动修改原文。
 
-  工作流：扫描 → 生成指令 MD → AI 自然重写句子 → 再扫描 → 循环至 🔴高危归零。
+  工作流：扫描 → 生成指令 MD → AI 自然重写句子 → 再扫描 → 循环至 🔴high 归零。
 
-覆盖规则（25 条，按四大类组织）：
+严重度语义（与 resources/style_gate.md 三层对齐）：
+  high   = 规范层硬错：引号配对、缩写未展开、箭头速记、引号滥用、诚信问题。
+           可机械核验，故要求归零。
+  medium = 惯例层：句式与标点密度、系数行内报告、书名入正文、中英对照密度、
+           编码括号。只生成改写指令，是否采纳由作者与审查文件决定。
+  low    = 偏好层：括号插入语密度等本仓库风格选择，仅作提示。
+
+预算制（DOC_BUDGETS，按十篇顶刊语料校准，见 99-经验总结报告）：
+  同一规则的全篇检出次数超过预算 → 全部升级为 high，必须改写到预算内。
+  语料中零出现的模式（后文预告、自我辩护否定、管理学黑话）预算为 0。
+  语料中真实出现的模式给小额预算（如"不是……而是"≤ 2、"首次"≤ 2）。
+
+覆盖规则（38 条，按六大类组织）：
   A. 句式反模式（7 条）
-     ...
   B. 标点与节奏（8 条）
-     ...
   C. 冗余标记（2 条）
-     ...
-  D. write module 标准合规（8 条）
-     D1-D8 [同上]
-     D9  英文缩写过度使用 / 跨节未重新展开
+  D. write module 标准合规（11 条）
+  E. 防御性写法与八股元话语（9 条，预算制）
+     E1 前向结构预告（下文将/下一节将……，语料零出现）
+     E2 防御性否定（这并不意味着/或许有人会……，语料零出现）
+     E3 强调性元话语（值得注意的是/需要指出的是，预算 1）
+     E4 缺陷总结散布（"本文的不足"出现在非尾部章节）
+     E5 复述型元话语（综上所述/正如前文所述，预算 2）
+     E6 自夸硬宣称（填补空白/开创性/里程碑，预算 0）
+     E7 八股四字格（方兴未艾/日新月异/由此可见，预算 1）
+     E8 管理学黑话（赋能/抓手/闭环/底层逻辑，预算 0）
+     E9 "首次"宣称（语料中限定范围的"首次尝试"可用，预算 2）
+  F. 引文一致性（2 条）
+     F1 罗列式综述（只综不述：≥ 3 句作者（年份）开头且无争论定位词）
+     F3 夹注与参考文献表交叉核对（作者-年份组合对不上 → 疑似张冠李戴）
 
 用法：
   python writing_scanner.py --scan <file.md>            # 快速扫描统计
   python writing_scanner.py --report <file.md>          # 完整 Markdown 报告
   python writing_scanner.py --instructions <file.md>    # 生成结构化改写指令 MD
-  python writing_scanner.py --instructions <file.md> --out rewrite.md  # 指定输出
+  python writing_scanner.py --check <file.md>           # JSON 机读结果（闸门用，high>0 时退出码 1）
+  python writing_scanner.py --budgets                   # 打印预算表
 """
 
 import re
@@ -114,6 +135,8 @@ BUSHI_PATTERNS = [
     (r'不能[^，。,\.]{0,60}只能[^。\.]{0,200}?(?:[。\.]|$)', '不能……只能……'),
     (r'(?:[。；]|^)(?!不[安同会像再足断仅单管论妨免]{1})不[^\n，。；]{1,40}，[^\n]{0,20}而[^\n。；]{1,200}?(?:[。；]|$)', '不……，而……'),
     (r'与其说.{0,80}不如说.{0,200}?(?:[。\.]|$)', '与其说……不如说……'),
+    (r'与其[^。\n]{0,60}不如[^。\n]{0,200}?(?:[。\.]|$)', '与其……不如……'),
+    (r'与其说.{0,80}毋宁说.{0,200}?(?:[。\.]|$)', '与其说……毋宁说……'),
 ]
 
 def check_a1_bushi(text, para_idx, para, all_paras):
@@ -122,10 +145,10 @@ def check_a1_bushi(text, para_idx, para, all_paras):
     for pat, name in BUSHI_PATTERNS:
         for m in re.finditer(pat, para):
             issues.append(Issue(
-                'A1', 'high', 'syntax', para_idx,
+                'A1', 'medium', 'syntax', para_idx,
                 context=m.group()[:200],
                 detail=f'变体: {name}',
-                fix_hint='改为直接肯定陈述。如"不是A而是B"→直接陈述B，A的信息作为次要补充'
+                fix_hint='先否定后肯定是汉语学术论证的基本手段，不必逢遇必改（见 style_gate.md exp-negpos-01）。仅在以下情形改写：同一节内三次以上，或该结构成为段落主干。改写时直接陈述B，把A处置为次要补充；若被否定的那一项正是本文要驳倒的既有立场，保留原结构。'
             ))
     return _dedup(issues)
 
@@ -218,24 +241,24 @@ def check_b1_dash(text, para_idx, para, all_paras):
         return []
     issues = []
 
-    # ── B1a: 正文破折号存在（零容忍，每段≥1 个即标记）──
+    # ── B1a: 破折号密度（同段超过两处才报，单处正常使用不报）──
     cnt = para.count('——')
-    if cnt >= 1:
+    if cnt >= 3:
         issues.append(Issue(
-            'B1', 'high', 'rhythm', para_idx,
+            'B1', 'medium', 'rhythm', para_idx,
             context=para[:200],
             detail=f'{cnt} 个 ——（{len(para)} 字段落，{cnt/(len(para)/100):.1f}/百字）',
-            fix_hint='AI 自然重写整个句子，彻底消除破折号。不得用冒号、逗号或括号机械替换。若句子结构依赖——才能成立，说明句子本身需要重构。'
+            fix_hint='破折号是 GB/T 15834 列明的规范标点，正常使用不必改写（见 style_gate.md exp-dash-01）。本段密度偏高：保留承担真实解释功能的一处，其余改由从句顺接或独立短句。改写须重写句子，不得用冒号、逗号或括号机械换位。'
         ))
 
     # ── B1b: 双破折号插入语 ——……—— ──
     double_dash = re.findall(r'——[^。\n——]{3,50}——', para)
     if double_dash:
         issues.append(Issue(
-            'B1', 'high', 'rhythm', para_idx,
+            'B1', 'medium', 'rhythm', para_idx,
             context=para[:200],
             detail=f'{len(double_dash)} 处双——插入语：{double_dash[0][:60]}',
-            fix_hint='AI 自然重写句子，将插入语融入主句。不得机械替换标点。'
+            fix_hint='双破折号插入语打断句子，宜融入主句或改为独立句子。改写须重写句子，不得机械替换标点。'
         ))
 
     # ── B1c: 破折号机械替换痕迹 —— 仅检测高置信度长括号插入（≥25字）──
@@ -622,18 +645,18 @@ def check_d5_param_pvalue_density(text, para_idx, para, all_paras):
         pval_samples = pval_re.findall(p) + pval_named_re.findall(p)
         samples_str = '、'.join(pval_samples[:6])
         issues.append(Issue(
-            'D5', 'high', 'compliance', p_idx,
+            'D5', 'medium', 'compliance', p_idx,
             context=p[:250],
             detail=f'该段 {cnt} 处行内 p 值表述：{samples_str}',
-            fix_hint='正文禁止出现系数值与p值的行内配对（如"系数0.268，p<0.01"或"0.268（p<0.01）"）。统计参数全部收入表格，正文仅以定性语言报告方向与显著性层级：正向显著、在1%水平上正向显著、不显著、边际显著。唯一例外：置换检验的精确p值（如"经验p值0.010"）可保留，但每段不超过1处。'
+            fix_hint='正文以方向与显著性层级叙述、完整参数入表，不逐格复述回归表（见 style_gate.md exp-param-01）。本段行内参数密集，保留真正需要比较效应量、解释边际效应或锁定机制的那一处，并说明量纲与参照类别；其余改为定性叙述。判据是这段文字在解释结果，还是在复读表格。'
         ))
 
     if total_paper >= 10 and not any(i.para_idx == -2 for i in issues):
         issues.append(Issue(
-            'D5', 'medium', 'compliance', -2,
+            'D5', 'low', 'compliance', -2,
             context=f'全文共计 {total_paper} 处行内 p 值表述',
             detail=f'全文行内 p 值表述密度过高（{total_paper} 处）',
-            fix_hint='统计参数全部收入表格。正文仅以定性语言报告方向与显著性层级：正向显著、在1%/5%/10%水平上显著、不显著、边际显著。禁止系数值与p值的行内配对。'
+            fix_hint='全文行内参数偏多时，优先把可表格化的结果移入表格，保留需要解释的那几处（style_gate.md exp-param-01）。这是风格取舍，不是硬错。'
         ))
 
     return issues
@@ -666,10 +689,10 @@ def check_d7_journal_book_in_text(text, para_idx, para, all_paras):
         for m in re.finditer(pat, para):
             # 排除参考文献条目中常见的 "发表于《XX》"
             issues.append(Issue(
-                'D7', 'high', 'compliance', para_idx,
+                'D7', 'medium', 'compliance', para_idx,
                 context=para[max(0, m.start()-30):min(len(para), m.end()+40)],
                 detail=f'{name}：正文中嵌入了完整期刊名',
-                fix_hint='期刊名应仅出现在参考文献条目中。正文使用作者-年份引用格式。如"张三（2020）在《社会学研究》上发表"→"张三（2020）"；"发表于《管理世界》"→删除，改为作者-年份引用。'
+                fix_hint='期刊名与卷期不进正文，改用作者-年份夹注（style_gate.md exp-booktitle-01）。如"张三（2020）在《社会学研究》上发表"→"张三（2020）"；"发表于《管理世界》"→删去刊名，保留作者-年份。'
             ))
 
     # ── 模式2：在其《XX》一书中/著作中 ──
@@ -682,10 +705,10 @@ def check_d7_journal_book_in_text(text, para_idx, para, all_paras):
     for pat, name in book_patterns:
         for m in re.finditer(pat, para):
             issues.append(Issue(
-                'D7', 'high', 'compliance', para_idx,
+                'D7', 'medium', 'compliance', para_idx,
                 context=para[max(0, m.start()-30):min(len(para), m.end()+40)],
                 detail=f'{name}：正文中嵌入了完整书名',
-                fix_hint='书名应仅出现在参考文献条目中。正文使用作者-年份引用格式。如"在其《公共领域》一书中"→删去书名，仅保留"洛夫兰（Lofland，1998）"；"在其民族志著作《为生命而舞》中"→"黄（Huang，2025）"。'
+                fix_hint='先确认这个书名是论证对象还是文献出处（style_gate.md exp-booktitle-01）。若是论证对象（如"费孝通在《乡土中国》中把差序格局描述为……"），保留书名并补作者与年份；若只是出处标注，改作者-年份夹注。'
             ))
 
     # ── 模式3："一文中"/"该文"非学术口语 ──
@@ -696,10 +719,10 @@ def check_d7_journal_book_in_text(text, para_idx, para, all_paras):
     for pat, name in colloquial_patterns:
         for m in re.finditer(pat, para):
             issues.append(Issue(
-                'D7', 'high', 'compliance', para_idx,
+                'D7', 'medium', 'compliance', para_idx,
                 context=para[max(0, m.start()-20):min(len(para), m.end()+40)],
-                detail=f'"{name}"：非学术口语表述',
-                fix_hint='"一文中""该文"属于非学术口语。改为作者-年份引用格式或直接陈述。如"张三（2020）一文中"→"张三（2020）"；"该文指出"→"该研究指出"或删除换为引文。'
+                detail=f'"{name}"：回指表述',
+                fix_hint='指代必须落在具体文献上（style_gate.md exp-yiwen-01）。"张三（2020）提出"优于"该文提出"；同段内确需回指时"该文"可用一次，跨段回指须重出作者与年份。'
             ))
 
     return issues if issues else []
@@ -824,7 +847,7 @@ def check_d6_coding_parens(text, para_idx, para, all_paras):
             samples = [m.group()[:50] for m in all_parens[:5]]
             samples_str = '、'.join(samples)
             issues.append(Issue(
-                'D6', 'high', 'compliance', p_idx,
+                'D6', 'medium', 'compliance', p_idx,
                 context=p[:250],
                 detail=f'{len(all_parens)} 处行内编码说明括号：{samples_str}',
                 fix_hint='正文不应出现变量编码操作指令（记为/定义为/赋值为/保留取值等括号）。将编码规则移至附录，正文仅保留变量的分析含义概述。例如"（未签订劳动合同记为1）"→正文只需说明"风险暴露指数由四类风险加总构成，具体编码见附录"。'
@@ -936,10 +959,10 @@ def check_d11_excessive_parens(text, para_idx, para, all_paras):
     括号打断句子节奏，迫使读者在两条思维路径之间切换。
     大多数括号插入语（解释、列举、补充说明）可以融入主句或以逗号引出。
 
-    检测三项：
-      1. 段落内括号密度过高（≥4 对）→ high
-      2. 全中文括号插入语（无引用/技术标记）→ medium（逐条标记，每段最多3条）
-      3. 以"如/即/例如/包括"开头的可融入括号 → medium
+    检测三项（均属偏好层，仅提示）：
+      1. 段落内括号密度过高（≥4 对）→ low
+      2. 全中文括号插入语（无引用/技术标记）→ low（逐条标记，每段最多3条）
+      3. 以"如/即/例如/包括"开头的可融入括号 → low
     """
     if _is_ref_entry(para) or _is_english_heavy(para):
         return []
@@ -984,10 +1007,10 @@ def check_d11_excessive_parens(text, para_idx, para, all_paras):
     if len(prose_parens) >= 4:
         samples = [p.strip()[:40] for p in prose_parens[:4]]
         issues.append(Issue(
-            'D11', 'high', 'compliance', para_idx,
+            'D11', 'low', 'compliance', para_idx,
             context=para[:250],
             detail=f'该段可融入括号过多：{len(prose_parens)} 对非技术性括号插入语（{"; ".join(samples)}）',
-            fix_hint='中文学术论文应避免括号插入语打断句子节奏。解释性内容改为逗号引出，列举性内容改为自然叙述，补充说明改写为独立短句。引用和技术标注的括号保留。'
+            fix_hint='括号插入语是学术写作的正常节奏工具，保留与否由句子节奏决定（style_gate.md exp-paren-01）。本段数量偏多，优先处理那些可用逗号顺接的解释性插入；引用与技术参数括号照常使用。'
         ))
 
     # ── D11b: 全中文可融入括号插入语 ──
@@ -1005,10 +1028,10 @@ def check_d11_excessive_parens(text, para_idx, para, all_paras):
 
     if integrable_count >= 3:
         issues.append(Issue(
-            'D11', 'medium', 'compliance', para_idx,
+            'D11', 'low', 'compliance', para_idx,
             context=para[:250],
             detail=f'{integrable_count} 处中文括号插入语可融入正文：{"; ".join(samples[:3])}',
-            fix_hint='全中文括号插入语几乎都可以融入正文。改写方式：(1) 括号内为解释→用逗号或"即"引出；(2) 括号内为列举→改为冒号引出或自然叙述；(3) 括号内为补充说明→改为独立短句或"其中""例如"引出。'
+            fix_hint='这些括号可以融入正文，但不是必须：(1) 括号内为解释→可用逗号或"即"引出；(2) 括号内为列举→可改冒号引出；(3) 括号内为补充说明→可改独立短句。保留括号也有理由（防歧义、标出旁注），取舍记入审查文件。'
         ))
 
     # ── D11c: 以信号词开头的可融入括号 ──
@@ -1016,22 +1039,290 @@ def check_d11_excessive_parens(text, para_idx, para, all_paras):
     if signal_parens:
         samples_str = '; '.join([p.strip()[:50] for p in signal_parens[:3]])
         issues.append(Issue(
-            'D11', 'medium', 'compliance', para_idx,
+            'D11', 'low', 'compliance', para_idx,
             context=para[:250],
             detail=f'{len(signal_parens)} 处以"如/即/例如/包括"等开头的括号插入语：{samples_str}',
-            fix_hint='以"如/即/例如"开头的括号插入语可以通过逗号直接融入主句。例如"（如张三，2020）"→"，如张三（2020）"；"（即前文所述机制）"→"，即前文所述机制"。去掉括号，用逗号衔接。'
+            fix_hint='以"如/即/例如"开头的括号插入语可以改为逗号衔接（style_gate.md exp-paren-01）；是否改由句子节奏决定，属于风格取舍。'
         ))
 
     return issues if issues else []
 
 
 # ═══════════════════════════════════════════════════════
-# 规则注册表（27 条）
+# ═════════════════════════════════════════════════════
+# ── E. 防御性写法与八股元话语（预算制，2026-10 十篇顶刊语料校准）──
+# ═════════════════════════════════════════════════════
+
+# E1: 前向结构预告（语料十篇零出现 → 预算 0，high）
+E1_PREVIEW = re.compile(
+    r'(?:下文将|后文将|后文会|将在后文|下文中将|下一[节章]将|'
+    r'第[一二三四五六七八九十\d]+[节章]将(?:介绍|讨论|分析|展开|呈现|阐述|说明)|'
+    r'详见后文|后见详述|留待后文|将在下文|如下文所示|如后文所示|此点留待)'
+)
+
+def check_e1_preview(text, para_idx, para, all_paras):
+    hits = E1_PREVIEW.findall(para)
+    if hits:
+        return [Issue('E1', 'high', 'defense', para_idx,
+                      context=para[:250],
+                      detail=f'前向结构预告：{hits[0]}（顶刊语料中零出现，读者不需要路线图）',
+                      fix_hint='删掉预告句。章节该说什么，读者翻到那一章自然知道；预告只暴露对结构的不自信。若怕读者迷路，说明结构本身需要重新。')]
+    return []
+
+
+# E2: 防御性否定与自问自答（语料零出现 → 预算 0，high）
+E2_DEFENSE = re.compile(
+    r'(?:这并(?:不意味着|不代表)|笔者无意|笔者深知|难免存在|(?:或许|可能)有人会(?:认为|质疑|问)|'
+    r'有人可能会(?:认为|质疑|问)|不难发现|无需赘言|自不待言)'
+)
+
+def check_e2_defense(text, para_idx, para, all_paras):
+    hits = E2_DEFENSE.findall(para)
+    if hits:
+        return [Issue('E2', 'high', 'defense', para_idx,
+                      context=para[:250],
+                      detail=f'防御性写法：{hits[0]}（为论文预写辩护，语料零出现）',
+                      fix_hint='删掉防御句，直接陈述事实。真有反驳意见，像 Lei 那样在讨论部分先问先答（有证据的回答）；没证据的预设质疑只是稻草人。')]
+    return []
+
+
+# E3: 强调性元话语（语料仅渠敬东 1 处 → 预算 1）
+E3_EMPHASIS = re.compile(r'(?:值得注意的是|需要指出的是|需要强调的是|必须指出[，,]?|特别值得注意)')
+
+def check_e3_emphasis(text, para_idx, para, all_paras):
+    hits = E3_EMPHASIS.findall(para)
+    if hits:
+        return [Issue('E3', 'medium', 'defense', para_idx,
+                      context=para[:250],
+                      detail=f'强调性元话语：{hits[0]}（全篇预算 1 次）',
+                      fix_hint='删掉"值得注意的是"直接说事。真正值得注意的内容，读者自己会注意；靠元话语抬高重要性的句子，多半内容本身不够硬。')]
+    return []
+
+
+# E4: 缺陷总结散布（只允许出现在结论/讨论/局限类章节，其余位置 high）
+E4_FLAW = re.compile(
+    r'(?:本文的不足|本研究的不足|本文的局限|本研究局限|存在以下(?:不足|局限)|'
+    r'(?:笔者|作者).{0,6}(?:能力|水平)有限|力有不逮)'
+)
+
+_TAIL_HEADINGS = re.compile(r'(结论|讨论|结语|总结|小结|尾议|局限|余论)')
+
+def check_e4_flaw_scatter(text, para_idx, para, all_paras):
+    """全文级：逐块扫描，带标题上下文判断是否尾部章节。"""
+    issues = []
+    current_tail = False
+    blocks = re.split(r'\n\s*\n', text)
+    p_idx = 0
+    for block in blocks:
+        stripped = block.strip()
+        if re.match(r'^#{1,6}\s', stripped):
+            current_tail = bool(_TAIL_HEADINGS.search(stripped))
+            continue
+        is_para = len(stripped) > 20
+        if is_para and not current_tail and E4_FLAW.search(stripped):
+            issues.append(Issue('E4', 'high', 'defense', p_idx,
+                          context=stripped[:250],
+                          detail='缺陷总结出现在非尾部章节：论文正文不应为自己的毛病写辩护',
+                          fix_hint='删掉这段自我检讨。具体数据的诚实说明（如周飞舟自报产量浮夸）放脚注；系统性局限只在结论章按"承认→削弱→指向未来"三拍写一次。'))
+        if is_para:
+            p_idx += 1
+    return issues
+
+
+# E5: 复述型元话语（语料：正如前文所述 1、不再赘述 1 → 预算 2）
+E5_RESTATE = re.compile(
+    r'(?:综上所述|总而言之|正如前文所述|前文已[经]?[提及指出谈到]|'
+    r'上文[提到指出]|不再赘述|通过上述分析|通过以上分析)'
+)
+
+def check_e5_restate(text, para_idx, para, all_paras):
+    hits = E5_RESTATE.findall(para)
+    if hits:
+        return [Issue('E5', 'medium', 'defense', para_idx,
+                      context=para[:250],
+                      detail=f'复述型元话语：{hits[0]}（全篇预算 2 次）',
+                      fix_hint='结论不复述前文，而是开新层次：同义反复换成边界条件、反向关系句或未答之问（周飞舟："控制越严密，则越难以知晓地方的实际情况"）。')]
+    return []
+
+
+# E6: 自夸硬宣称（语料零出现 → 预算 0，high）
+E6_BOAST = re.compile(
+    r'(?:填补了?.{0,8}空白|开创性|开创了?.{0,8}(?:研究|领域|范式)|里程碑式|'
+    r'重要的?理论意义和?现实意义|重要的?理论与现实意义)'
+)
+
+def check_e6_boast(text, para_idx, para, all_paras):
+    hits = E6_BOAST.findall(para)
+    if hits:
+        return [Issue('E6', 'high', 'defense', para_idx,
+                      context=para[:250],
+                      detail=f'自夸硬宣称：{hits[0]}（贡献由正文兑现，不由形容词宣称）',
+                      fix_hint='删掉宣称句。贡献写法：正文做到了什么写什么（陈龙的类型学贡献是在证据齐备后才补"给埃德沃兹的二分加一格"）。限定范围的具体贡献（如"首次尝试"）另见 E9 预算。')]
+    return []
+
+
+# E7: 八股四字格（语料仅渠敬东 1 处 → 预算 1）
+E7_CLICHE = re.compile(
+    r'(?:方兴未艾|如火如荼|日新月异|层出不穷|应运而生|不容忽视|毋庸置疑|'
+    r'由此可见|大有可为|势在必行|任重道远|意义深远|深刻变革|深刻影响)'
+)
+
+def check_e7_cliche(text, para_idx, para, all_paras):
+    hits = E7_CLICHE.findall(para)
+    if hits:
+        return [Issue('E7', 'medium', 'defense', para_idx,
+                      context=para[:250],
+                      detail=f'八股四字格/空泛形容：{"、".join(sorted(set(hits)))}（全篇预算 1 次）',
+                      fix_hint='换成具体内容："日新月异"删掉后写具体变化（陈龙写"直线距离不能超过500米……间隔不能少于5分钟"，具体规则比形容更有冲击力）。')]
+    return []
+
+
+# E8: 管理学黑话（语料零出现 → 预算 0，high）
+E8_BUZZ = re.compile(r'(?:赋能|抓手|闭环|底层逻辑|深度融合|颗粒度|组合拳|新质)')
+
+def check_e8_buzz(text, para_idx, para, all_paras):
+    hits = E8_BUZZ.findall(para)
+    if hits:
+        return [Issue('E8', 'high', 'defense', para_idx,
+                      context=para[:250],
+                      detail=f'管理学黑话/网络流行语：{"、".join(sorted(set(hits)))}（学术语料零出现）',
+                      fix_hint='换成实指："赋能"写具体谁给谁提供了什么资源；"底层逻辑"写机制本身；"闭环"写回路的具体环节。')]
+    return []
+
+
+# E9: "首次"宣称（语料中莫怡青 2 处均为限定范围用法 → 预算 2）
+E9_FIRST = re.compile(r'首次')
+
+def check_e9_first(text, para_idx, para, all_paras):
+    hits = E9_FIRST.findall(para)
+    if hits:
+        return [Issue('E9', 'medium', 'defense', para_idx,
+                      context=para[:250],
+                      detail='"首次"宣称（全篇预算 2 次，且须限定范围）',
+                      fix_hint='限定范围才可用（"中国背景下的首次尝试"可以，裸的"首次发现"不行）；能删则删，让文献表自己说话。')]
+    return []
+
+
+# ═════════════════════════════════════════════════════
+# ── F. 引文一致性（张冠李戴与只综不述）──
+# ═════════════════════════════════════════════════════
+
+# F1: 罗列式综述（只综不述）
+_F1_CITE_SENT = re.compile(r'^[^，。；、（）]{2,20}（\d{4}）')
+_F1_JUDGE = re.compile(
+    r'(?:但是|然而|不过|相比之下|相反|其实|实际上|问题在于|争议|分歧|'
+    r'矛盾在于|遗憾的是|恰恰|不同的是|却|而对|未能|回避了|避开了|忽视了|简单化)'
+)
+
+def check_f1_listing_review(text, para_idx, para, all_paras):
+    sentences = split_sentences(para)
+    cite_sents = [s for s in sentences if _F1_CITE_SENT.match(s)]
+    # 判分词必须在作者自己的句子（非引用开头句）里才算定位；纯罗列段全部句子都是引用句
+    own_sents = [s for s in sentences if not _F1_CITE_SENT.match(s)]
+    has_own_judgment = any(_F1_JUDGE.search(s) for s in own_sents) if own_sents else False
+    if len(cite_sents) >= 3 and not has_own_judgment:
+        names = [s[:s.index('（')] if '（' in s else s[:8] for s in cite_sents[:4]]
+        return [Issue('F1', 'high', 'citation', para_idx,
+                      context=para[:250],
+                      detail=f'罗列式综述（只综不述）：{len(cite_sents)} 句以"作者（年份）"开头并列转述（{"、".join(names)}），作者自己的句子无争论定位词',
+                      fix_hint='综述的合格单位是"可争论的判断"，不是文献数量。改法：先把这几篇按立场分组（谁支持A、谁支持B、分歧在哪一维），再用"然而/相比之下/问题在于"接住自己的位置——周飞舟批三类文献每批完必留门；"分成三个方面最后汇集到一起"是最需要避免的假综合。')]
+    return []
+
+
+# F3: 夹注与参考文献交叉核对（张冠李戴检测）
+def check_f3_citation_crosscheck(text, para_idx, para, all_paras):
+    """全文级：正文夹注的（作者, 年份）组合须能在参考文献表中找到同名同年条目。"""
+    m = re.search(r'^#{0,6}\s*(?:参考文献|引用文献|References)\s*$', text,
+                  re.IGNORECASE | re.MULTILINE)
+    if not m:
+        return []
+    refs_text = text[m.end():]
+    body = text[:m.start()]
+
+    ref_pairs = set()
+    for line in refs_text.splitlines():
+        line = line.strip().lstrip('-*•·0123456789. ').strip()
+        if len(line) < 6:
+            continue
+        ym = re.search(r'(\d{4})', line)
+        if not ym:
+            continue
+        year = ym.group(1)
+        mc = re.match(r'^([一-鿿·]{2,4}(?:[、，,][一-鿿·]{2,4}){0,6})', line)
+        if mc:
+            ref_pairs.add((mc.group(1), year))
+            continue
+        me = re.match(r'^([A-Z][A-Za-zÀ-ÿ\-]+)', line)
+        if me:
+            ref_pairs.add((me.group(1), year))
+
+    if not ref_pairs:
+        return []
+
+    intext = re.findall(
+        r'([一-鿿·]{2,4}|[A-Z][A-Za-zÀ-ÿ\-]+)'
+        r'(?:\s+et\s+al\.?|\s+and\s+[A-Z][A-Za-zÀ-ÿ\-]+)?[（(](\d{4})[）)]',
+        body)
+
+    issues = []
+    for name, year in sorted(set(intext)):
+        ok = False
+        for rn, ry in ref_pairs:
+            if ry != year:
+                continue
+            if rn and rn[0].isascii():
+                if rn.split()[0].lower() == name.lower():
+                    ok = True
+                    break
+            else:
+                if name in rn or rn in name:
+                    ok = True
+                    break
+        if not ok:
+            pos = -1
+            for pat in (f'{name}（{year}）', f'{name}({year})', f'{name}，{year}'):
+                pos = body.find(pat)
+                if pos >= 0:
+                    break
+            snippet = body[max(0, pos - 40):pos + 60].replace('\n', ' ') if pos >= 0 else f'{name}（{year}）'
+            issues.append(Issue('F3', 'high', 'citation', -1,
+                          context=snippet,
+                          detail=f'作者-年份组合"{name}（{year}）"未能在参考文献表中找到同名同年条目——疑似张冠李戴、年份错记或文献表缺条',
+                          fix_hint='逐条核对：打开原文核对作者、年份、结论是否真的属于这篇文献（张冠李戴是审稿一票否决项）；若为转引，改成"转引自"并核对二手来源。'))
+    return issues
+
+
+# ═════════════════════════════════════════════════════
+# ── 全篇预算（超出即全部升级 high；预算 0 的规则直接以 high 检出）──
+# 校准依据：十篇顶刊语料（不是而是×3、首次×2、显而易见×1、正如前文所述×1）
+# ═════════════════════════════════════════════════════
+
+DOC_BUDGETS = {
+    'A1': 2,   # 不是……而是……及变体（含与其……不如……）
+    'A7': 1,   # 之所以……是因为……
+    'E3': 1,   # 值得注意的是类强调元话语
+    'E5': 2,   # 综上所述/正如前文所述类复述元话语
+    'E7': 1,   # 八股四字格
+    'E9': 2,   # 首次（须限定范围）
+}
+
+def apply_budgets(issues: list[Issue]) -> list[Issue]:
+    """超出全篇预算的规则，其全部检出升级为 high（含原本 medium/low 的）。"""
+    counts = Counter(i.rule_id for i in issues if i.severity != 'high')
+    for iss in issues:
+        budget = DOC_BUDGETS.get(iss.rule_id)
+        if budget is not None and iss.severity != 'high' and counts[iss.rule_id] > budget:
+            iss.severity = 'high'
+            iss.detail += f' ‼︎ 全篇出现 {counts[iss.rule_id]} 次，超出预算 {budget} 次，全部升级为 high'
+    return issues
+
+
+# 规则注册表（38 条）
 # ═══════════════════════════════════════════════════════
 
 ALL_RULES = [
     # A. 句式反模式（7 条，全部段落级）
-    Rule('A1', '不是……而是……句式（含9种变体）', 'high', 'syntax', check_a1_bushi),
+    Rule('A1', '不是……而是……句式（含9种变体）', 'medium', 'syntax', check_a1_bushi),
     Rule('A2', '"对……进行……"冗长句式', 'low', 'syntax', check_a2_dui_jinxing),
     Rule('A3', '"通过……来……"冗长句式', 'low', 'syntax', check_a3_tongguo_lai),
     Rule('A4', '"在……中/上/下"冗余前置', 'low', 'syntax', check_a4_zai_locative),
@@ -1040,7 +1331,7 @@ ALL_RULES = [
     Rule('A7', '"之所以……是因为……"句式（AI口癖）', 'medium', 'syntax', check_a7_zhi_suoyi),
 
     # B. 标点与节奏（8 条，全部段落级）
-    Rule('B1', '破折号综合检测（存在/双插入语/机械替换痕迹）', 'high', 'rhythm', check_b1_dash),
+    Rule('B1', '破折号密度与双插入语检测', 'medium', 'rhythm', check_b1_dash),
     Rule('B2', '超长单句 (>150字)', 'medium', 'rhythm', check_b2_long_sentence),
     Rule('B3', '分号滥用 (≥3个/段)', 'low', 'rhythm', check_b3_semicolon_abuse),
     Rule('B4', '超长段落 (>500字)', 'medium', 'rhythm', check_b4_long_paragraph),
@@ -1058,13 +1349,28 @@ ALL_RULES = [
     Rule('D2', '引用形式单一', 'medium', 'compliance', check_d2_citation_variety, scope='full'),
     Rule('D3', '结论以限制结尾 [C6]', 'medium', 'compliance', check_d3_conclusion_ending, scope='full'),
     Rule('D4', '逐条引号检视（必要最少原则）', 'medium', 'compliance', check_d4_unnecessary_quotes, scope='full'),
-    Rule('D5', '量化论文参数p值行内密度 [E-new]', 'high', 'compliance', check_d5_param_pvalue_density, scope='full'),
-    Rule('D6', '行内编码说明括号 [M0b]', 'high', 'compliance', check_d6_coding_parens, scope='full'),
-    Rule('D7', '正文嵌入期刊名/书名（在《XX》上发表/在其《XX》中/发表于《XX》）', 'high', 'compliance', check_d7_journal_book_in_text),
+    Rule('D5', '量化论文参数p值行内密度 [E-new]', 'medium', 'compliance', check_d5_param_pvalue_density, scope='full'),
+    Rule('D6', '行内编码说明括号 [M0b]', 'medium', 'compliance', check_d6_coding_parens, scope='full'),
+    Rule('D7', '正文嵌入期刊名/书名（在《XX》上发表/在其《XX》中/发表于《XX》）', 'medium', 'compliance', check_d7_journal_book_in_text),
     Rule('D8', '中英对照括号过度使用（English（中文）/ 中文（English）泛滥）', 'high', 'compliance', check_d8_bilingual_paren_gloss),
     Rule('D9', '英文缩写过度使用 / 跨节未重新展开', 'high', 'compliance', check_d9_abbreviation_overuse),
     Rule('D10', '括号内箭头速记符号（↑↓→）', 'high', 'compliance', check_d10_arrow_shorthand),
-    Rule('D11', '括号插入语密度过高 / 可融入括号', 'high', 'compliance', check_d11_excessive_parens),
+    Rule('D11', '括号插入语密度过高 / 可融入括号', 'low', 'compliance', check_d11_excessive_parens),
+
+    # E. 防御性写法与八股元话语（9 条，预算制见 DOC_BUDGETS）
+    Rule('E1', '前向结构预告（下文将/下一节将，语料零出现）', 'high', 'defense', check_e1_preview),
+    Rule('E2', '防御性否定与自问自答（这并不意味着/或许有人会，语料零出现）', 'high', 'defense', check_e2_defense),
+    Rule('E3', '强调性元话语（值得注意的是/需要指出的是，预算1）', 'medium', 'defense', check_e3_emphasis),
+    Rule('E4', '缺陷总结散布于非尾部章节（"本文的不足"出现在正文）', 'high', 'defense', check_e4_flaw_scatter, scope='full'),
+    Rule('E5', '复述型元话语（综上所述/正如前文所述，预算2）', 'medium', 'defense', check_e5_restate),
+    Rule('E6', '自夸硬宣称（填补空白/开创性/里程碑，预算0）', 'high', 'defense', check_e6_boast),
+    Rule('E7', '八股四字格（方兴未艾/由此可见，预算1）', 'medium', 'defense', check_e7_cliche),
+    Rule('E8', '管理学黑话（赋能/抓手/底层逻辑，预算0）', 'high', 'defense', check_e8_buzz),
+    Rule('E9', '"首次"宣称（须限定范围，预算2）', 'medium', 'defense', check_e9_first),
+
+    # F. 引文一致性（2 条）
+    Rule('F1', '罗列式综述（只综不述：≥3句作者（年份）开头且无争论定位）', 'high', 'citation', check_f1_listing_review),
+    Rule('F3', '夹注与参考文献表交叉核对（作者-年份对不上→疑似张冠李戴）', 'high', 'citation', check_f3_citation_crosscheck, scope='full'),
 ]
 
 
@@ -1091,7 +1397,7 @@ def _dedup(issues):
 # ═══════════════════════════════════════════════════════
 
 def scan_all(text: str) -> list[Issue]:
-    """执行全部规则，返回问题列表"""
+    """执行全部规则，应用全篇预算，返回问题列表"""
     all_paras = preprocess(text)
     all_issues = []
 
@@ -1106,6 +1412,8 @@ def scan_all(text: str) -> list[Issue]:
                 if result:
                     all_issues.extend(result)
 
+    all_issues = apply_budgets(all_issues)
+
     sev_order = {'high': 0, 'medium': 1, 'low': 2}
     all_issues.sort(key=lambda x: (sev_order.get(x.severity, 3), x.para_idx))
     return all_issues
@@ -1117,11 +1425,16 @@ def scan_all(text: str) -> list[Issue]:
 
 # 全局 IRON RULES（生成改写指令时置顶）
 IRON_RULES = [
-    '改写后不得引入新的"不是……而是……"句式。',
+    '改写后不得引入新的"不是……而是……"句式（全篇含变体预算 2 次）。',
     '不得用标点符号机械替换破折号（如 ——→：、——→，、——→（））。必须 AI 自然重写整个句子。若原句依赖破折号才能表达语义关系（解释、转折、递进、插入），则句子结构本身需要重构。',
     '改写后正文中不得出现任何破折号（——）。',
     '改写后不得引入新的"之所以……是因为……"句式（AI 口癖）。',
     '不得用脚本或正则机械替换标点符号。所有标点修改必须由 AI 理解句意后自然重写句子。',
+    '不得引入前向结构预告（下文将/下一节将/第三节将介绍）——真实顶刊零出现，删掉预告直接写内容。',
+    '不得引入防御性写法（这并不意味着/或许有人会质疑/不难发现/笔者无意）——删掉辩护直接陈述。',
+    '系统性局限只在结论章按"承认→削弱→指向未来"三拍写一次；正文各处不得散布"本文的不足"。',
+    '不得引入八股四字格与空泛形容（方兴未艾/日新月异/深刻影响）——换成具体规则、数字或机制。',
+    '改写不得虚构或变换引文信息：作者、年份、结论归属必须与原文献一致（张冠李戴是审稿一票否决项）。',
 ]
 
 
@@ -1139,7 +1452,7 @@ def generate_instructions(text: str, issues: list[Issue], source_file: str) -> s
     cat_counts = defaultdict(lambda: defaultdict(int))
     for iss in issues:
         cat_counts[iss.category][iss.rule_id] += 1
-    for cat in ['syntax', 'rhythm', 'redundancy', 'compliance']:
+    for cat in ['syntax', 'rhythm', 'redundancy', 'compliance', 'defense', 'citation']:
         for rid, cnt in sorted(cat_counts[cat].items()):
             rule = next((r for r in ALL_RULES if r.id == rid), None)
             if rule:
@@ -1190,7 +1503,7 @@ def cmd_scan(args):
     cat_counts = Counter(i.category for i in issues)
     print(f'检出 {len(issues)} 个问题：')
     print(f'  严重度: 高{sev_counts["high"]} 中{sev_counts["medium"]} 低{sev_counts["low"]}')
-    print(f'  类别: 句式{cat_counts.get("syntax",0)} 标点节奏{cat_counts.get("rhythm",0)} 冗余{cat_counts.get("redundancy",0)} 合规{cat_counts.get("compliance",0)}')
+    print(f'  类别: 句式{cat_counts.get("syntax",0)} 标点节奏{cat_counts.get("rhythm",0)} 冗余{cat_counts.get("redundancy",0)} 合规{cat_counts.get("compliance",0)} 防御性写法{cat_counts.get("defense",0)} 引文一致性{cat_counts.get("citation",0)}')
 
     if args.verbose:
         for i, iss in enumerate(issues):
@@ -1257,6 +1570,66 @@ def cmd_instructions(args):
     return 0
 
 
+def cmd_check(args):
+    """JSON 机读结果，供 draft_gate.py 等闸门消费。high>0 时退出码 1。"""
+    text = Path(args.file).read_text(encoding='utf-8')
+    issues = scan_all(text)
+    sev_counts = Counter(i.severity for i in issues)
+    rule = {r.id: r.name for r in ALL_RULES}
+    data = {
+        'file': str(args.file),
+        'status': 'fail' if sev_counts['high'] else 'pass',
+        'counts': {
+            'high': sev_counts['high'],
+            'medium': sev_counts['medium'],
+            'low': sev_counts['low'],
+            'total': len(issues),
+        },
+        'budgets': dict(DOC_BUDGETS),
+        'issues': [
+            {
+                'rule': i.rule_id,
+                'rule_name': rule.get(i.rule_id, i.rule_id),
+                'severity': i.severity,
+                'category': i.category,
+                'para': i.para_idx,
+                'detail': i.detail,
+                'context': i.context[:300],
+            }
+            for i in issues
+        ],
+    }
+    out = json.dumps(data, ensure_ascii=False, indent=2)
+    if args.out:
+        Path(args.out).write_text(out, encoding='utf-8')
+        print(f'检查结果已保存 → {args.out}')
+    else:
+        print(out)
+    return 1 if sev_counts['high'] else 0
+
+
+def cmd_budgets(args):
+    print('全篇预算表（超出即全部升级 high；校准依据：十篇顶刊语料）')
+    print()
+    print('| 规则 | 预算 | 语义 |')
+    print('|---|---|---|')
+    semantics = {
+        'A1': '不是而是及变体：真实论文使用极少（十篇共 3 次）',
+        'A7': '之所以是因为：AI 口癖',
+        'E3': '值得注意的是类强调元话语：语料仅 1 次',
+        'E5': '综上所述/正如前文所述类复述：语料仅 2 次',
+        'E7': '八股四字格：语料仅 1 次',
+        'E9': '首次（须限定范围）：语料 2 次均为"首次尝试/首次评估"',
+    }
+    for rid, b in DOC_BUDGETS.items():
+        r = next((x for x in ALL_RULES if x.id == rid), None)
+        print(f"| {rid} {r.name if r else ''} | {b} | {semantics.get(rid, '')} |")
+    zero_budget = [r for r in ALL_RULES if r.id.startswith(('E1', 'E2', 'E6', 'E8', 'F1', 'F3'))]
+    print()
+    print('预算 0（任何一次即 high）：' + '、'.join(f'{r.id} {r.name}' for r in zero_budget))
+    return 0
+
+
 def main():
     parser = argparse.ArgumentParser(
         description='中文学术写作综合扫描器 — 检出问题 → 生成改写指令',
@@ -1268,17 +1641,27 @@ def main():
   %(prog)s --scan paper.md -vv          # 显示全部
   %(prog)s --report paper.md            # 完整 Markdown 报告
   %(prog)s --instructions paper.md      # 生成改写指令 MD（供当前宿主 agent 执行）
+  %(prog)s --check paper.md             # JSON 机读结果（闸门用，high>0 退出码 1）
+  %(prog)s --budgets                    # 打印全篇预算表
         """,
     )
-    parser.add_argument('file', help='目标 Markdown 文件')
+    parser.add_argument('file', nargs='?', help='目标 Markdown 文件')
     group = parser.add_mutually_exclusive_group(required=True)
     group.add_argument('--scan', action='store_true', help='快速扫描统计')
     group.add_argument('--report', action='store_true', help='完整 Markdown 报告')
     group.add_argument('--instructions', action='store_true', help='生成结构化改写指令 MD')
+    group.add_argument('--check', action='store_true', help='JSON 机读结果（high>0 退出码 1，闸门用）')
+    group.add_argument('--budgets', action='store_true', help='打印全篇预算表')
     parser.add_argument('-v', '--verbose', action='count', default=0)
     parser.add_argument('--out', help='输出文件路径')
 
     args = parser.parse_args()
+
+    if args.budgets:
+        return cmd_budgets(args)
+
+    if not args.file:
+        parser.error('需要提供目标文件（--budgets 除外）')
     if not os.path.exists(args.file):
         print(f'❌ 文件不存在：{args.file}')
         return 1
@@ -1289,6 +1672,8 @@ def main():
         return cmd_report(args)
     elif args.instructions:
         return cmd_instructions(args)
+    elif args.check:
+        return cmd_check(args)
     return 0
 
 

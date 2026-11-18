@@ -1,47 +1,47 @@
-# Literature Review Writing Protocol
+# Literature Review Writing Protocol（文献综述协作协议）
 
-本协议是 lit 与 write 共用的综述写作接口。lit 负责可追溯的文献、证据和论证准备；write 负责将这些材料写成可直接进入论文的章节。用户直接要求“写文献综述”时，lit 完成准备后必须按本协议调用 write 的写作流程，不得另起一套正文模板。
+本协议是 `lit` 与 `write` 模块共用的文献综述接口：`lit` 负责可追溯的检索、证据映射与论证规划；`write` 负责依据上述材料生成可直接并入论文的综述正文。用户要求「写文献综述」时，`lit` 完成准备后须按本协议交由 `write` 成稿，不得另行生成体例不一的正文模板。
 
-## 1. 共享输入
+## 1. 共享输入文件
 
-准备和改写综述前，先读取以下项目内材料：
+撰写或改写综述前，须读取 `paper-workspace/02-literature/` 下的四份共享输入：
 
-- 02-literature/paper-registry.csv：题录、稳定 paper_id、PDF/全文路径、处理状态和 citation key。
-- 02-literature/review-evidence.csv：正文判断与原文证据的唯一映射表。
-- 02-literature/review-outline.md：研究问题、段落顺序、每段承担的论证动作和引用的 claim ID。
-- 02-literature/review-gaps.md：未能成文的判断、缺少的全文或不可声称内容。
+- `paper-registry.csv`：题录信息、稳定 `paper_id`、PDF/全文路径、处理状态与 citation key。
+- `review-evidence.csv`：正文论断与原文证据的唯一映射表。
+- `review-outline.md`：研究问题、段落顺序、各段论证任务及引用的 `claim_id`。
+- `review-gaps.md`：尚未成文的论断、缺失全文或禁止写入正文的内容。
 
-其中 review-evidence.csv 至少包含以下字段：
+`review-evidence.csv` 须包含以下字段：
 
-    claim_id,paragraph_id,argument_role,claim,stance,paper_id,citation_key,evidence_level,
-    source_location,source_excerpt,study_design_or_text,scope_conditions,
-    permitted_paraphrase,not_supported,review_status
+```text
+claim_id,paragraph_id,argument_role,claim,stance,paper_id,citation_key,evidence_level,
+source_location,source_excerpt,study_design_or_text,scope_conditions,
+permitted_paraphrase,not_supported,review_status
+```
 
-- evidence_level 只能为 fulltext、abstract、theory_text 或 unverified。
-- fulltext、theory_text 用于机制、方法批评、效应量、争议判断和强空白判断，必须给出页码、章节或可定位段落。
-- abstract 只能支持摘要明确陈述的研究对象、设计和概括性发现，不能扩写为机制、因果或领域共识。
-- unverified 不得进入正文，只能留在 review-gaps.md。
+证据等级（`evidence_level`）取值限定为四类：
+- `fulltext` / `theory_text`：用于机制分析、方法批评、效应量比较、学术争议判断与强空白判断，须注明页码、章节或可定位段落；
+- `abstract`：仅支持摘要中明确陈述的研究对象、研究设计与概括性发现，不得扩写为内在机制、因果结论或领域共识；
+- `unverified`：严禁进入正文，仅保留在 `review-gaps.md`。
 
-## 2. 论证与空白规则
+## 2. 论证组织与空白表述规则
 
-- 段落围绕一个可争论判断写作，比较文献在概念、对象、材料、方法和情境上的关系，再说明它们是互补、冲突还是不可直接比较。允许一处判断由多篇文献分组支持。
-- 段落须推进研究问题或理论对话，不按数据库、国别或“作者逐篇发现”组织。
-- 每个研究不足必须说明检索范围、最近先例、已覆盖内容、仍未解释的具体问题及其理论意义。未检索到只可表述为“在本次检索范围内尚未发现”。
-- “非显著”“证据接近零”和“证据不足”必须分别处理。换一个人群、数据或方法本身不构成贡献。
-- 理论、规范和阐释研究以概念区分、论证前提、竞争立场、反例/反诠释与文本出处组织，不强制使用变量、机制或实证发现结构。
+- **按论断组织段落**：每段围绕一个可讨论的学术判断展开，比较相关文献在概念、对象、材料、方法与情境上的异同，再指明其互补、冲突或不可直接比较之处（允许由多篇文献分组支撑同一判断）。
+- **禁止罗列式综述**：段落须推进研究问题或理论对话，不得按数据库、国别或「作者逐篇流水账」组织。
+- **研究空白须界定边界**：每项空白须说明检索范围、最近似先例、已有文献覆盖范围、未解决的具体问题及其理论意义。检索未命中只能表述为「在本次检索范围内尚未发现」，不得断言领域内绝对空白。
+- **区分统计结论与证据缺口**：「效果不显著」「效应接近零」与「缺乏研究证据」须分别表述；单纯更换样本人群、数据集或估计方法本身不构成充分的理论贡献。
+- **非实证研究适配**：理论、规范及阐释类研究围绕概念区分、论证前提、竞争立场、反例或反诠释与文本出处组织，不强制套用「变量—机制—实证发现」结构。
 
-## 3. 交付与改写
+## 3. 交付与改写规范
 
-- 正文唯一落点为 05-writing/literature-review.md。它只包含标题层级、自然段和实际引用的参考文献，不包含检索日志、文献地图、证据表、待补证据或 Mermaid。
-- 综述正文由 write 按其审查和文风流程生成；字数、分节和语言比例以用户要求和目标期刊为准，既有范文只作可选结构参考。
-- 修改已有综述前，先在 review-evidence.csv 标记保留、修改、移除或新增的 claim，并将失效判断移入 review-gaps.md。不得在没有证据映射的情况下静默改写核心论证。
-- 关键证据尚未满足时，可以交付边界明确的初稿；正文外记录缺口，不得将未验证的机制、共识或空白写成定论。
+- **唯一输出路径**：综述正文净稿写入 `paper-workspace/05-writing/literature-review.md`，仅包含标题层级、自然段与实际引用的参考文献，不得混入检索日志、文献地图、证据表、待补证据或 Mermaid 图。
+- **成稿流程**：由 `write` 模块按其评审与文风校验流程生成；篇幅、分节与语种比例以用户要求和目标期刊为准，既有范文仅作可选结构参考。
+- **改写先行更新映射**：修改已有综述前，须先在 `review-evidence.csv` 标注保留、修改、移除或新增的 `claim`，并将失效论断移入 `review-gaps.md`；不得在脱离证据映射的情况下直接改写核心论断。
+- **缺证降级交付**：关键证据尚未补齐时，可交付边界明确的初稿，并在正文外记录缺口，不得将未核验的机制、领域共识或研究空白写成定论。
 
-## 4. 复核
+## 4. 交付前核查清单
 
-交付前检查：
-
-1. 每个关键判断、争议、方法批评和效应数值均能回查 claim_id 与原文位置。
-2. 正文每一段都在 review-outline.md 中有对应的论证任务，并使用已核验的 claim。
-3. 文后参考文献只列正文实际引用的条目，且均可回查 paper_id 或理论文本出处。
-4. review-gaps.md 中的未核验内容没有进入正文。
+1. **论断可回查**：正文中的关键判断、学术争议、方法批评与效应数值均能对应至 `claim_id` 与原文具体位置。
+2. **结构一致**：正文每一段落均在 `review-outline.md` 中有明确论证任务，且仅使用已核验的 `claim`。
+3. **引文对应**：文后参考文献列表仅包含正文实际引用的条目，且每条均可回查至 `paper_id` 或理论文本出处。
+4. **缺口隔离**：`review-gaps.md` 中的未核验内容未渗入正文。

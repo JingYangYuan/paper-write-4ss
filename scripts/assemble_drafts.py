@@ -19,8 +19,12 @@ from datetime import datetime
 from pathlib import Path
 from typing import Any
 
+sys.path.insert(0, str(Path(__file__).resolve().parent))
+from draft_gate import validate_writer_file  # noqa: E402
+
 
 WRITER_PREFIX = "paper-write-chapter-draft-writer--"
+GATE_STRICT = True  # 草稿硬闸门：未过闸的写手输出拒收，不进拼接
 WRITER_SECTION_HEADINGS = (
     "任务包",
     "正文草稿",
@@ -28,6 +32,7 @@ WRITER_SECTION_HEADINGS = (
     "未使用材料",
     "待补证据",
     "不可声称内容",
+    "草稿元数据",
 )
 FORBIDDEN_MANUSCRIPT_HEADINGS = {
     "任务包",
@@ -166,6 +171,18 @@ def read_writer(path: Path, task_id: str) -> tuple[WriterDraft | None, list[str]
         errors.append(f"{path} 缺少非空 `## 正文草稿`。")
     if errors:
         return None, errors
+
+    # 草稿硬闸门：结构/字数/扫描器 high=0/引文申报（张冠李戴）全部通过才收
+    if GATE_STRICT:
+        gate_errors, _meta = validate_writer_file(path, expect_task_id=task_id)
+        if gate_errors:
+            errors.append(f"{path} 未过 draft_gate（拒收，需重写后重新提交）：")
+            for ge in gate_errors[:15]:
+                errors.append(f"  - {ge}")
+            if len(gate_errors) > 15:
+                errors.append(f"  - ……另有 {len(gate_errors) - 15} 项")
+            return None, errors
+
     return (
         WriterDraft(
             task_id=task_id,

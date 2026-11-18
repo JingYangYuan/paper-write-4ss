@@ -5,3 +5,6 @@ __pycache__/
 *.log
 .env
 .env.*
+runtime/
+renv/library/
+*.tar.gz

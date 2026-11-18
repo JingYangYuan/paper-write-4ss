@@ -19,6 +19,11 @@ Example 内容按需截取器 —— 根据研究路由结果，仅提取对应�
 设计原则：
   路由完成后调用此脚本，只加载写作所需的最小范文集，避免 5 个 example 文件
   全部加载造成的 token 浪费（全部加载约 30KB → 截取后约 8-15KB）。
+
+截取策略：
+  只截"动作清单/可选结构""常见失败""示范段落"三类内容，不截模板句、禁令行与
+  交付前检查；输出开头附一句元声明，说明所截内容为参照而非骨架。
+  表达规则不在范文里重复，统一见 resources/style_gate.md。
 """
 
 import re
@@ -36,19 +41,39 @@ EXAMPLES_DIR = Path(__file__).resolve().parent.parent / "examples"
 # heading_keywords: 匹配范文章节标题（中文关键字匹配）
 # prompt_keywords:  匹配提示词模板标题
 
+# 截取包开头的元声明。范文只作参照，不构成骨架与字数要求。
+EXTRACT_NOTE = (
+    "> 以下为参照，不是骨架。结构可选、句式自定、篇幅按目标期刊稿约；"
+    "表达规则见 resources/style_gate.md，此处只给判据与示范。"
+)
+
+# 含以下标记的行不进入截取包（遗留禁令行与模板句的防御性过滤）。
+BAN_LINE_MARKERS = ("写作禁令", "违反以下任一条", "结构模板（五段式", "梯级模板")
+
+
+def _drop_ban_lines(content: str) -> str:
+    """删除遗留的禁令行与模板行。"""
+    kept = [
+        line for line in content.splitlines()
+        if not any(marker in line for marker in BAN_LINE_MARKERS)
+    ]
+    return "\n".join(kept)
+
+
 EXAMPLE_MAP = {
+    # 四个重写后的 example 与发表范式无关，两种范式截取同一组章节。
+    # 关键词对应各文件现有的节标题，节标题改名时须同步此处。
     "intro_example.md": {
         "社会学研究范式": {
-            "headings": ["社会学研究范式引言", "两种范式引言差异速查", "引言写作通用禁忌"],
+            "headings": ["五个动作", "两种常见排布", "常见失败", "示范段落"],
         },
         "管理世界案例研究范式": {
-            "headings": ["管理世界案例研究范式引言", "两种范式引言差异速查", "引言写作通用禁忌"],
+            "headings": ["五个动作", "两种常见排布", "常见失败", "示范段落"],
         },
     },
 
     "lit_review_example.md": {
-        # 综述范文已按 master/literature-review-protocol.md 重写为证据驱动结构，
-        # 与发表范式无关，两种范式截取同一组章节。
+        # 综述范文按 master/literature-review-protocol.md 写成证据驱动结构。
         "社会学研究范式": {
             "headings": [
                 "可选结构", "理论争论", "实证分歧", "概念与理论谱系", "方法边界",
@@ -65,76 +90,37 @@ EXAMPLE_MAP = {
 
     "framework_example.md": {
         "社会学研究范式": {
-            "headings": [
-                "分析框架在论文中的两种位置",
-                "社会学研究范式分析框架",
-                "维度分解型",
-                "理论对话型",
-                "分析框架提示词模板",
-                "框架质量自检清单",
-            ],
+            "headings": ["两种位置", "可选结构", "常见失败", "示范段落"],
         },
         "管理世界案例研究范式": {
-            "headings": [
-                "分析框架在论文中的两种位置",
-                "管理世界案例范式理论框架",
-                "机制链型",
-                "二维矩阵型",
-                "分析框架提示词模板",
-                "框架质量自检清单",
-            ],
+            "headings": ["两种位置", "可选结构", "常见失败", "示范段落"],
         },
     },
 
     "findings_example.md": {
         "社会学研究范式": {
-            # 社会学范式下根据具体方法进一步筛选
-            "量化实证": {
-                "headings": [
-                    "社会学研究范式：量化实证类",
-                    "量化实证提示词",
-                    "研究发现质量自检清单",
-                ],
-            },
-            "质性田野或深度访谈": {
-                "headings": [
-                    "社会学研究范式：质性田野类",
-                    "质性田野提示词",
-                    "研究发现质量自检清单",
-                ],
-            },
-            # 默认（未指定具体方法时）
-            "_default": {
-                "headings": [
-                    "社会学研究范式：量化实证类",
-                    "社会学研究范式：质性田野类",
-                    "研究发现质量自检清单",
-                ],
-            },
+            "headings": ["三个问题", "可选的组织方式", "常见失败", "示范段落"],
         },
         "管理世界案例研究范式": {
-            "headings": [
-                "管理世界案例范式：研究发现",
-                "管理世界案例提示词",
-                "研究发现质量自检清单",
-            ],
+            "headings": ["三个问题", "可选的组织方式", "常见失败", "示范段落"],
         },
     },
 
     "conclusion_example.md": {
         "社会学研究范式": {
-            "headings": [
-                "社会学研究范式结论",
-                "两种范式结论差异速查",
-                "结论写作反模式",
-            ],
+            "headings": ["四件事", "两种范式的侧重", "常见失败", "示范段落"],
         },
         "管理世界案例研究范式": {
-            "headings": [
-                "管理世界案例范式结论",
-                "两种范式结论差异速查",
-                "结论写作反模式",
-            ],
+            "headings": ["四件事", "两种范式的侧重", "常见失败", "示范段落"],
+        },
+    },
+
+    "contrasts_example.md": {
+        "社会学研究范式": {
+            "headings": ["模板化写法", "清单式写法", "三行判别"],
+        },
+        "管理世界案例研究范式": {
+            "headings": ["模板化写法", "清单式写法", "三行判别"],
         },
     },
 }
@@ -226,7 +212,7 @@ def extract_example(filename: str, paradigm: str, method: str = None) -> str:
     file_title = filename.replace('.md', '')
     output_parts.append(f"<!-- 来源：examples/{filename} | 范式：{paradigm} | 方法：{method or '默认'} -->\n")
     for sec in matched:
-        output_parts.append(sec['content'].rstrip() + '\n')
+        output_parts.append(_drop_ban_lines(sec['content']).rstrip() + '\n')
 
     return '\n'.join(output_parts)
 
@@ -254,6 +240,7 @@ def extract_all(paradigm: str, method: str = None,
         f"- 发表范式：{paradigm}\n"
         f"- 研究方法：{method or '默认'}\n"
         f"- 方法协议：{protocol or '默认'}\n\n"
+        f"{EXTRACT_NOTE}\n\n"
         f"---\n\n"
     )
 
